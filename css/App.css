@@ -2,3 +2,47 @@ window, body {
   margin: 0;
   padding: 0;
 }
+
+#App {
+  font-family: 'Noto Sans', sans-serif;
+  font-size: 14px;
+}
+
+.float-group {
+  position: relative;
+}
+
+.float-group label {
+  position: absolute;
+  top: 0;
+  padding: 2px;
+  margin: 9px 0 0 15px;
+  transition: all 200ms;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.float-group-input:focus + .float-group-label,
+.float-group-input:valid + .float-group-label,
+.float-group-input.keepFloating + .float-group-label {
+  font-size: 75%;
+  transform: translate3d(0, -19px, 0);
+  opacity: 1;
+  background: #fff;
+}
+
+.float-group-input:focus + .float-group-label {
+  color: #4EA4F6;
+}
+
+input[type="text"], input[type="email"], input[type="phone"] {
+  width: 100%;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  padding: 0 15px;
+  font-size: 14px;
+}
+input:focus {
+  box-shadow: 0 0 0 2px #4EA4F6;
+}
