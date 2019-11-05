@@ -4,5 +4,6 @@
     ["@babel/plugin-transform-react-jsx", { "pragma": "dom" }],
     "@babel/plugin-proposal-class-properties"
   ],
-  "ignore": ["html"]
+  "ignore": ["html", "node_modules"],
+  "presets": []
 }
