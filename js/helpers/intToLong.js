@@ -1,0 +1,1 @@
+export default (high = 0, low = 0) => (BigInt(high) >> BigInt(32) + BigInt(low)).toString(10)
