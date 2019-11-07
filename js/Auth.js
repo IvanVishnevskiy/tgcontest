@@ -7,4 +7,6 @@ const set = keys => {
   })
 }
 
-export default { set }
+const get = key => Auth[key]
+
+export default { set, get }
