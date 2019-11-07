@@ -13,7 +13,7 @@ const compareBytes = (b1 = [], b2 = []) => {
 }
 
 const bytesToHex = (b = []) => 
-  b.map(item => ((item < 16 ? '0' : '') + item || 0).toString(16) ).join('')
+  b.map(byte => ('0' + byte.toString(16)).slice(-2), 16).join('')
 
 const bytesFromHex = (hex = '') => {
   const length = hex.length
