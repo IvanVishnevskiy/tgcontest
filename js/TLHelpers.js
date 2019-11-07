@@ -3,6 +3,10 @@ import Config from './Config'
 import { DivRem } from './helpers/BigInt'
 import intToLong from './helpers/intToLong'
 
+import bigInt from 'big-integer'
+
+const isObject = val => val === null ? false : (typeof val === 'function') || (typeof val === 'object')
+
 function intToUint (val) {
   val = parseInt(val)
   if (val < 0) {
@@ -118,7 +122,7 @@ TLSerialization.prototype.storeLong = function (sLong, field) {
   if (typeof sLong != 'string') {
     sLong = sLong ? sLong.toString() : '0'
   }
-  var divRem = DivRem(BigInt(sLong), BigInt(0x100000000))
+  var divRem = DivRem(bigInt(sLong), bigInt(0x100000000))
 
   this.writeInt(intToUint(parseInt(divRem[1])), (field || '') + ':long[low]')
   this.writeInt(intToUint(parseInt(divRem[0])), (field || '') + ':long[high]')
@@ -287,7 +291,7 @@ TLSerialization.prototype.storeObject = function (obj, type, field) {
       return
   }
 
-  if (Array.isArray(obj)) {
+  if (obj.map) {
     if (type.substr(0, 6) == 'Vector') {
       this.writeInt(0x1cb5c415, field + '[id]')
     }
@@ -305,7 +309,7 @@ TLSerialization.prototype.storeObject = function (obj, type, field) {
     throw new Error('Invalid vector object')
   }
 
-  if (!Object.isObject(obj)) {
+  if (!isObject(obj)) {
     throw new Error('Invalid object for type ' + type)
   }
 
@@ -407,8 +411,10 @@ TLDeserialization.prototype.fetchLong = function (field) {
   var iLow = this.readInt((field || '') + ':long[low]')
   var iHigh = this.readInt((field || '') + ':long[high]')
 
-  var longDec = intToLong(iLow, iHigh)
+  console.log(123, iLow, iHigh)
 
+  var longDec = intToLong(iLow, iHigh)
+  console.log(124, longDec)
   return longDec
 }
 
@@ -548,7 +554,6 @@ TLDeserialization.prototype.fetchObject = function (type, field) {
   }
 
   field = field || type || 'Object'
-
   if (type.substr(0, 6) == 'Vector' || type.substr(0, 6) == 'vector') {
     if (type.charAt(0) == 'V') {
       var constructor = this.readInt(field + '[id]')
