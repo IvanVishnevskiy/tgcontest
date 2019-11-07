@@ -31,9 +31,9 @@ const sendRequest = requestBuffer => {
   .then(data => data.arrayBuffer())
   .then(data => {
       const parsedData = new TLDeserialization(data, { mtproto: true })
-      const auth_key_id = parsedData.fetchLong('auth_key_id')
-      const msg_id = parsedData.fetchLong('msg_id')
-      const msg_len = parsedData.fetchInt('msg_len')
+      parsedData.fetchLong('auth_key_id')
+      parsedData.fetchLong('msg_id')
+      parsedData.fetchInt('msg_len')
       return [null, parsedData]
     })
   .catch(error => {
