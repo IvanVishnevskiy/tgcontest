@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "parcel ./index.html -p 8001"
+    "start": "parcel ./CryptoWorker.js ./index.html -p 8001"
   },
   "keywords": [],
   "author": "",
@@ -16,6 +16,8 @@
     "parcel-bundler": "^1.12.4"
   },
   "dependencies": {
+    "big-integer": "^1.6.47",
+    "rusha": "^0.8.13",
     "tdweb": "^1.5.0"
   }
 }
