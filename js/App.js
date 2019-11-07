@@ -1,5 +1,7 @@
 import '../css/App.css'
 
+import CryptoWorker from './crypto/worker'
+
 import { TLSerialization } from './TLHelpers'
 
 import loginJS from '../pages/login/login'
@@ -8,8 +10,13 @@ import loginCSS from '../pages/login/login.css'
 
 import { sendRequest } from './mtproto'
 import nextRandomInt from './helpers/nextRandomInt'
+import { compareBytes, bytesToHex } from './helpers/bytes'
+import { selectKeyByFingerprint } from './RSA'
 
 import Auth from './Auth'
+import bigInt from 'big-integer'
+
+window.bigInt = bigInt
 
 const $G = query => document.getElementById(query)
 const $GS = query => document.querySelector('.' + query)
@@ -63,34 +70,48 @@ serializer.storeMethod('req_pq', { nonce })
 
 const auth1 = serializer.getArray()
 
-sendRequest(auth1)
+const sendReqPQ = () => sendRequest(auth1)
 .then(([error, data]) => {
   if(error) throw new Error(error)
-  window.res = data
   const res = data.fetchObject('ResPQ')
+  window.res = res
   const { _, server_nonce, pq, server_public_key_fingerprints, fingerprints } = res
   if (_ !== 'resPQ') 
-    throw new Error('[MT] resPQ response invalid: ' + response._)
+    throw new Error('[MT] resPQ response invalid: ' + _)
   
-  console.log(res)
-  if (!bytesCmp(auth.nonce, response.nonce)) 
+  if (!compareBytes(nonce, res.nonce)) 
     throw new Error('[MT] resPQ nonce mismatch')
   
-  auth.set({ 
+  Auth.set({ 
     serverNonce: server_nonce, 
     pq, 
     fingerprints: server_public_key_fingerprints,
 
   })
 
-  console.log(dT(), 'Got ResPQ', bytesToHex(auth.serverNonce), bytesToHex(auth.pq), auth.fingerprints)
+  console.log(performance.now(), 'Got ResPQ', bytesToHex(Auth.get('serverNonce')), bytesToHex(Auth.get('pq')), Auth.get('fingerprints'))
 
-  auth.publicKey = MtpRsaKeysManager.select(auth.fingerprints)
+  Auth.set({
+    publicKey: selectKeyByFingerprint(server_public_key_fingerprints)
+  })
 
-  if (!auth.publicKey) {
+  if (!Auth.get('publicKey')) {
     throw new Error('[MT] No public key found')
   }
+  const hexPQ = bytesToHex(pq).join('')
+  console.log(hexPQ)
+  return CryptoWorker.factorize(hexPQ)
 })
+.then(([p ,q]) => {
+  console.log('Factorized pq', p, q)
+})
+
+// sendReqPQ()
+
+// CryptoWorker.factorize('17ED48941A08F981').then(data => {
+//   console.log('factorized', data.map(item => item.value))
+// })
+
 // console.log(auth1)
 
 // const xhr = new XMLHttpRequest
