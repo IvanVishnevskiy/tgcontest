@@ -1,3 +1,3 @@
-const DivRem = (x, y) => [x / y, x % y]
+const DivRem = (x, y) => [x.divide(y), x.mod(y)]
 
 export { DivRem }
