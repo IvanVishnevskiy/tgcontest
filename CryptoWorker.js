@@ -2,13 +2,6 @@ import bigInt from 'big-integer'
 
 console.log('Loading CryptoWorker...')
 
-
-const newtonIteration = (n, x0) => {
-  const x1 = ((n / x0) + x0) >> BigInt(1)
-  if (x0 === x1 || x0 === (x1 - BigInt(1))) return x0
-  return newtonIteration(n, x1)
-}
-
 const factorization = n => {
   let trials = 0
   n = n instanceof bigInt ? n : bigInt(n, 16)
