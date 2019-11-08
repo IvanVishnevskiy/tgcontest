@@ -6,7 +6,7 @@ const factorization = n => {
   let trials = 0
   n = n instanceof bigInt ? n : bigInt(n, 16)
   const two = bigInt(2)
-  if(n.mod(two).isZero()) return two
+  if(n.mod(two).isZero()) return [two]
   let y = bigInt.randBetween(bigInt(1), n.minus(bigInt(1)))
   const c = bigInt.randBetween(bigInt(1), n.minus(bigInt(1)))
   const m = bigInt.randBetween(bigInt(1), n.minus(bigInt(1)))
@@ -20,7 +20,7 @@ const factorization = n => {
     x = y
     for(let i = bigInt(0); i.lesser(r); i = i.add(bigInt(1))) {
       trials++
-      if(trials > 25000) return factorization(n)
+      if(trials > 30000) return factorization(n)
       y = (y.times(y).mod(n.add(c))).mod(n)
     }
     let k = bigInt(0)

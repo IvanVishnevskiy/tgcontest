@@ -7,6 +7,6 @@ const set = keys => {
   })
 }
 
-const get = key => Auth[key]
+const get = key => key ? Auth[key] : Auth
 
 export default { set, get }

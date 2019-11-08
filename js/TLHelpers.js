@@ -1,7 +1,6 @@
 import Config from './Config'
 
 import { DivRem } from './helpers/BigInt'
-import intToLong from './helpers/intToLong'
 
 import bigInt from 'big-integer'
 
@@ -411,10 +410,7 @@ TLDeserialization.prototype.fetchLong = function (field) {
   var iLow = this.readInt((field || '') + ':long[low]')
   var iHigh = this.readInt((field || '') + ':long[high]')
 
-  console.log(123, iLow, iHigh)
-
-  var longDec = intToLong(iLow, iHigh)
-  console.log(124, longDec)
+  var longDec = bigInt(iHigh).shiftLeft(32).add(bigInt(iLow)).toString()
   return longDec
 }
 

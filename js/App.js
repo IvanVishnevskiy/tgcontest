@@ -10,11 +10,13 @@ import loginCSS from '../pages/login/login.css'
 
 import { sendRequest } from './mtproto'
 import nextRandomInt from './helpers/nextRandomInt'
-import { compareBytes, bytesToHex } from './helpers/bytes'
-import { selectKeyByFingerprint } from './RSA'
+import { compareBytes, bytesToHex, sha1Bytes, bytesFromHex } from './helpers/bytes'
+import { selectKeyByFingerprint, rsaEncrypt } from './RSA'
 
 import Auth from './Auth'
 import bigInt from 'big-integer'
+
+import highEntropyRandom from './helpers/highEntropyRandom'
 
 window.bigInt = bigInt
 
@@ -57,56 +59,95 @@ const writeBuffer = (shift, lendata, resultbuf, data) => {
  }	
 }	
 
-const serializer = new TLSerialization({ mtproto: true });
+const sendReqPQ = () => {
+  const serializer = new TLSerialization({ mtproto: true });
 
-var nonce = []
-for (var i = 0; i < 16; i++) {
-  nonce.push(nextRandomInt(0xFF))
+  var nonce = []
+  for (var i = 0; i < 16; i++) {
+    nonce.push(nextRandomInt(0xFF))
+  }
+  Auth.set({ nonce })
+
+  serializer.storeMethod('req_pq', { nonce })
+
+  const auth1 = serializer.getArray()
+  sendRequest(auth1)
+    .then(([error, data]) => {
+      if(error) throw new Error(error)
+      const res = data.fetchObject('ResPQ')
+      window.res = res
+      const { _, server_nonce, pq, server_public_key_fingerprints, fingerprints } = res
+      if (_ !== 'resPQ') 
+        throw new Error('[MT] resPQ response invalid: ' + _)
+      
+      if (!compareBytes(nonce, res.nonce)) 
+        throw new Error('[MT] resPQ nonce mismatch')
+      
+      Auth.set({ 
+        server_nonce: server_nonce, 
+        pq, 
+        fingerprints: server_public_key_fingerprints,
+
+      })
+
+      console.log(performance.now(), 'Got ResPQ', bytesToHex(Auth.get('serverNonce')), bytesToHex(Auth.get('pq')), Auth.get('fingerprints'))
+
+      Auth.set({
+        publicKey: selectKeyByFingerprint(server_public_key_fingerprints)
+      })
+
+      if (!Auth.get('publicKey')) {
+        throw new Error('[MT] No public key found')
+      }
+      else console.log('Got MT public key')
+
+      const hexPQ = bytesToHex(pq)
+
+      console.log('PQ:', hexPQ, pq)
+      console.log('factorizing start')
+      // return CryptoWorker.factorize(hexPQ)
+    })
+    .then(([p ,q]) => {
+      console.log('factorizing end')
+      if(!p || !q) {
+        console.error(p, q)
+        throw new Error('[FACTORIZATION] Error factorizing. PQ')
+      }
+      const random = highEntropyRandom(32)
+      p = bytesFromHex(p.toString(16))
+      q = bytesFromHex(q.toString(16))
+      Auth.set({ new_nonce: random })
+      const data = new TLSerialization({ mtproto: true })
+
+      const { nonce, server_nonce, new_nonce, pq, publicKey } = Auth.get()
+      console.table({ pq, p, q, nonce, server_nonce, new_nonce })
+
+      data.storeObject({
+        _: 'p_q_inner_data',
+        pq,
+        p,
+        q,
+        nonce,
+        server_nonce,
+        new_nonce
+      }, 'P_Q_inner_data', 'DECRYPTED_DATA')
+
+      const dataWithHash = sha1Bytes(data.getBuffer()).concat(data.getBytes())
+
+      const request = new TLSerialization({ mtproto: true })
+      request.storeMethod('req_DH_params', {
+        nonce,
+        server_nonce,
+        p,
+        q,
+        server_public_key_fingerprint: publicKey.fingerprint,
+        encryptedData: rsaEncrypt(publicKey, dataWithHash)
+      })
+      console.log(publicKey)
+    })
 }
 
-// serializer.storeString(`req_pq#60469778 nonce:${random128()} = ResPQ`)
-serializer.storeMethod('req_pq', { nonce })
-// console.log(serializer.createBuffer(`req_pq#60469778 nonce:${random128()} = ResPQ`))
-
-const auth1 = serializer.getArray()
-
-const sendReqPQ = () => sendRequest(auth1)
-.then(([error, data]) => {
-  if(error) throw new Error(error)
-  const res = data.fetchObject('ResPQ')
-  window.res = res
-  const { _, server_nonce, pq, server_public_key_fingerprints, fingerprints } = res
-  if (_ !== 'resPQ') 
-    throw new Error('[MT] resPQ response invalid: ' + _)
-  
-  if (!compareBytes(nonce, res.nonce)) 
-    throw new Error('[MT] resPQ nonce mismatch')
-  
-  Auth.set({ 
-    serverNonce: server_nonce, 
-    pq, 
-    fingerprints: server_public_key_fingerprints,
-
-  })
-
-  console.log(performance.now(), 'Got ResPQ', bytesToHex(Auth.get('serverNonce')), bytesToHex(Auth.get('pq')), Auth.get('fingerprints'))
-
-  Auth.set({
-    publicKey: selectKeyByFingerprint(server_public_key_fingerprints)
-  })
-
-  if (!Auth.get('publicKey')) {
-    throw new Error('[MT] No public key found')
-  }
-  const hexPQ = bytesToHex(pq).join('')
-  console.log(hexPQ)
-  return CryptoWorker.factorize(hexPQ)
-})
-.then(([p ,q]) => {
-  console.log('Factorized pq', p, q)
-})
-
-// sendReqPQ()
+sendReqPQ()
 
 // CryptoWorker.factorize('17ED48941A08F981').then(data => {
 //   console.log('factorized', data.map(item => item.value))
@@ -142,3 +183,4 @@ const sendReqPQ = () => sendRequest(auth1)
 // console.log(serialization, deserialization)
 
 export { $G, $GS }
+
