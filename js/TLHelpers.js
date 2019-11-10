@@ -4,6 +4,8 @@ import { DivRem } from './helpers/BigInt'
 
 import bigInt from 'big-integer'
 
+import { bytesToHex } from './helpers/bytes'
+
 const isObject = val => val === null ? false : (typeof val === 'function') || (typeof val === 'object')
 
 function intToUint (val) {
@@ -197,7 +199,6 @@ TLSerialization.prototype.storeBytes = function (bytes, field) {
 }
 
 TLSerialization.prototype.storeIntBytes = function (bytes, bits, field) {
-  console.log(bytes)
   if (bytes instanceof ArrayBuffer) {
     bytes = new Uint8Array(bytes)
   }
@@ -266,6 +267,7 @@ TLSerialization.prototype.storeMethod = function (methodName, params) {
 }
 
 TLSerialization.prototype.storeObject = function (obj, type, field) {
+  console.log(1, obj, type, field)
   switch (type) {
     case '#':
     case 'int':
@@ -290,11 +292,13 @@ TLSerialization.prototype.storeObject = function (obj, type, field) {
       return
   }
 
-  if (obj.map) {
+
+  if (Array.isArray(obj)) {
     if (type.substr(0, 6) == 'Vector') {
       this.writeInt(0x1cb5c415, field + '[id]')
     }
     else if (type.substr(0, 6) != 'vector') {
+      console.log(type, type.substr(0, 6))
       throw new Error('Invalid vector type ' + type)
     }
     var itemType = type.substr(7, type.length - 8); // for "Vector<itemType>"
@@ -383,8 +387,6 @@ TLDeserialization.prototype.readInt = function (field) {
   }
 
   var i = this.intView[this.offset / 4]
-
-  this.debug && console.log('<<<', i.toString(16), i, field)
 
   this.offset += 4
 

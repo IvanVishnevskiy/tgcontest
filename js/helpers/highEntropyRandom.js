@@ -11,9 +11,9 @@ let rng
 const nowToBytes = now => Math.floor(seedrandom(now)() * 255)
 
 const listener = () => {
-  if(bytes.length >= 32 * 4) return
+  if(bytes.length >= 1024) return
   rng = seedrandom(performance.now(), { entropy: true })
-  for(let i = 0; i < 32; i++) bytes.push(Math.floor(rng() * 255))
+  for(let i = 0; i < 64; i++) bytes.push(Math.floor(rng() * 255))
 }
 
 const getNextByte = () => {
@@ -26,7 +26,7 @@ const getNextByte = () => {
 window.addEventListener('click', listener)
 window.addEventListener('keypress', listener)
 
-const highEntropyRandom = (length = 32) => [...new Array(length)].map(item => getNextByte())
+const highEntropyRandom = (length = 32) => [...new Array(length)].map(() => getNextByte())
 
 window.getNextByte = getNextByte
 window.highEntropyRandom = highEntropyRandom

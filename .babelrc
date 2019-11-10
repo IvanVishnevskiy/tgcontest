@@ -1,8 +1,7 @@
 {
   "plugins": [
     "@babel/plugin-syntax-jsx",
-    ["@babel/plugin-transform-react-jsx", { "pragma": "dom" }],
-    "@babel/plugin-proposal-class-properties"
+    ["@babel/plugin-transform-react-jsx", { "pragma": "dom" }]
   ],
   "ignore": ["html", "node_modules"],
   "presets": []

@@ -4,19 +4,24 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "parcel ./CryptoWorker.js ./index.html -p 8001"
+    "start": "parcel ./CryptoWorker.js ./index.html -p 8001",
+    "build": "parcel build ./CryptoWorker.js ./index.html"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@babel/core": "^7.7.0",
+    "@babel/core": "^7.0.0-0",
     "@babel/plugin-proposal-class-properties": "^7.7.0",
+    "@babel/plugin-proposal-pipeline-operator": "^7.5.0",
+    "@babel/plugin-syntax-jsx": "^7.2.0",
+    "@babel/plugin-transform-react-jsx": "^7.7.0",
     "parcel-bundler": "^1.12.4"
   },
   "dependencies": {
     "big-integer": "^1.6.47",
+    "crypto-js": "^3.1.9-1",
     "rusha": "^0.8.13",
     "seedrandom": "^3.0.5",
     "tdweb": "^1.5.0"

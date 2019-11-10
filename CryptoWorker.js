@@ -43,12 +43,24 @@ const factorization = n => {
       if(!g.lesserOrEquals(bigInt(1))) break
     }
   }
-  return [g, n.divide(g)]
+  const res1 = g
+  const res2 = n.divide(g)
+  return res1 > res2 ? [res2, res1] : [res1, res2]
+}
+
+const modPow = (x, y, m) => {
+  // const res = bigInt(x.value).pow(bigInt(y.value)).mod(bigInt(m.value))
+  const res = bigInt(x, 16).modPow(bigInt(y, 16), bigInt(m, 16))
+  return res
 }
 
 const tasks = {
-  factorization
+  factorization,
+  modPow
 }
+
+
+
 
 onmessage = (e) => {
   const { data } = e

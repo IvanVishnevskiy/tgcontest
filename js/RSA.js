@@ -1,20 +1,16 @@
 import { TLSerialization } from './TLHelpers'
-import { bytesFromHex, bytesToHex, sha1Bytes, addPadding, bytesFromBigInt } from './helpers/bytes'
+import { bytesFromHex, bytesToHex, sha1Bytes, addPadding } from './helpers/bytes'
 
 import bigInt from 'big-integer'
 
 function rsaEncrypt (publicKey, bytes) {
-  console.log('RSA encrypt start', bytes)
   bytes = addPadding(bytes, 255)
-  console.log(publicKey)
   const { modulus, exponent } = publicKey
   const N = bigInt(modulus, 16)
   const E = bigInt(exponent, 16)
-  const x = bigInt(bytesToHex(bytes), 16)
-  const encryptedX = x.modPow(E, N)
-  const encryptedBytes = bytesFromBigInt(encryptedX, 256)
-  console.log('RSA encrypt finish')
-  return encryptedBytes
+  const X = bigInt(bytesToHex(bytes), 16)
+  const encryptedX = X.modPow(E, N)
+  return bytesFromHex(encryptedX.toString(16))
 }
 
 const keys = [
@@ -48,7 +44,6 @@ const keys = [
   const buffer = RSAPublicKey.getBuffer()
 
   const fingerprintBytes = sha1Bytes(buffer).slice(-8).reverse()
-  console.log(bytesToHex(fingerprintBytes))
   obj[bytesToHex(fingerprintBytes)] = {
     modulus,
     exponent
@@ -57,7 +52,6 @@ const keys = [
 }, {})
 
 const selectKeyByFingerprint = fingerprints => {
-  console.log(fingerprints)
   let hexFingerprint = ''
   let res
   fingerprints.forEach((f, i) => {

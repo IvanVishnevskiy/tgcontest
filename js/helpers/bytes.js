@@ -2,6 +2,8 @@ import Rusha from 'rusha'
 
 import { toByteArray } from './BigInt'
 
+import cryptoCore from 'crypto-js/core'
+
 let rushaInstance
 
 const compareBytes = (b1 = [], b2 = []) => {
@@ -14,8 +16,18 @@ const compareBytes = (b1 = [], b2 = []) => {
   return true
 }
 
-const bytesToHex = (b = []) => 
-  b.map(byte => ('0' + byte.toString(16)).slice(-2), 16).join('')
+// const bytesToHex = (b = []) => 
+//   b.map((byte = 0) => (byte < 16 ? '0' : '') + byte.toString(16)).join('')
+
+
+function bytesToHex (bytes) {
+  bytes = bytes || []
+  var arr = []
+  for (var i = 0; i < bytes.length; i++) {
+    arr.push((bytes[i] < 16 ? '0' : '') + (bytes[i] || 0).toString(16))
+  }
+  return arr.join('')
+}
 
 const bytesFromHex = (hex = '') => {
   const length = hex.length
@@ -46,6 +58,9 @@ const bytesFromArrayBuffer = b => {
 
   return bytes
 }
+
+const bytesToArrayBuffer = b => new Uint8Array(b).buffer
+
 
 const sha1Hash = b => {
   rushaInstance = rushaInstance || new Rusha(1024 * 1024)
@@ -88,6 +103,43 @@ const bytesFromBigInt = (int, length) => {
   return bytes
 }
 
+const bytesToWords = bytes => {
+  if(bytes instanceof ArrayBuffer) bytes = new Uint8Array(bytes)
+  const length = bytes.length
+  const words = []
+  for(let i = 0; i < length; i++) words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8 )
+  return new cryptoCore.lib.WordArray.init(words, length)
+}
+
+const bytesFromWords = wordArray => {
+  const words = wordArray.words || wordArray.ciphertext.words
+  const sigBytes = wordArray.sigBytes || wordArray.ciphertext.sigBytes
+  const bytes = []
+
+  for(let i = 0; i < sigBytes; i++) bytes.push((words[i >>> 2] >>> (24 - (i % 4) * 8)) & 0xff)
+  return bytes
+}
+
+const bytesXor = (b1, b2) => {
+  const bytes = []
+
+  for(let i = 0; i < b1.length; i++) bytes[i] = b1[i] ^ b2[i]
+
+  return bytes
+}
 
 
-export { compareBytes, bytesToHex, bytesFromHex, bytesFromArrayBuffer, sha1Bytes, sha1Hash, addPadding, bytesFromBigInt }
+export { 
+  compareBytes, 
+  bytesToHex, 
+  bytesFromHex, 
+  bytesFromArrayBuffer, 
+  bytesToArrayBuffer,
+  sha1Bytes, 
+  sha1Hash, 
+  addPadding, 
+  bytesFromBigInt,
+  bytesToWords,
+  bytesFromWords,
+  bytesXor
+}
