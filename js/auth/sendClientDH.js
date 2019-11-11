@@ -9,7 +9,6 @@ import highEntropyRandom from '../helpers/highEntropyRandom'
 import { transformNumber, transformString } from '../typeTransformations'
 import AES from '../crypto/AES'
 import { sendRequest } from '../mtproto'
-import { randomBytes } from 'crypto'
 
 const sendClientDH = params => new Promise((resolve, reject) => {
   const { dh_prime } = params 
@@ -65,6 +64,7 @@ const sendClientDH = params => new Promise((resolve, reject) => {
     const authKeyHash = sha1Bytes(authKey)
     const authKeyAux = authKeyHash.slice(0, 8)
     const authKeyID = authKeyHash.slice(-8)
+    console.log(authKeyHash, authKeyAux, authKeyID)
     const { _ } = response
 
     switch(_) {

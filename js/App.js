@@ -2,13 +2,16 @@ import '../css/App.css'
 
 import CryptoWorker from './crypto/worker'
 
-import loginJS from '../pages/login/login'
-import loginHTML from '../pages/login/login.html'
-import loginCSS from '../pages/login/login.css'
+// import loginJS from '../pages/login/login'
+// import loginHTML from '../pages/login/login.html'
+
+import login from '../pages/login/export'
+
+
 
 import { sendRequest } from './mtproto'
 import nextRandomInt from './helpers/nextRandomInt'
-import { compareBytes, bytesToHex, sha1Bytes, bytesFromHex, addPadding } from './helpers/bytes'
+import { compareBytes, bytesToHex, sha1Bytes, bytesFromHex } from './helpers/bytes'
 import { selectKeyByFingerprint, rsaEncrypt } from './RSA'
 
 import Auth from './Auth'
@@ -21,11 +24,13 @@ import DH_params from './deserializers/DH_params'
 import { transformString, transformNumber } from './typeTransformations'
 
 import sendClientDH from './auth/sendClientDH'
-import { randomBytes } from 'crypto'
 
-import AES from './crypto/AES'
 import Session from './auth/session'
-import Config from './Config'
+
+import { Serialization } from './helpers/TL'
+
+const { js: loginJS, html: loginHTML } = login
+
 
 window.bigInt = bigInt
 
@@ -56,17 +61,18 @@ const sendReqPQ = () => {
   }
   Auth.set({ nonce })
 
+  const reqPQ = new Serialization()
+  reqPQ.store([
+    Serialization.name('60469778'),
+    Serialization.bytes(nonce)
+  ])
 
-  const reqPQ = bytesFromHex('60469778').reverse()
-  .concat(nonce) 
-
-
-  sendRequest(new Uint8Array(reqPQ).buffer)
+  sendRequest(reqPQ.getBuffer())
     .then(([error, data]) => {
       if(error) throw new Error(error)
       const res = data.fetchObject('ResPQ')
       window.res = res
-      const { _, server_nonce, pq, server_public_key_fingerprints, fingerprints } = res
+      const { _, server_nonce, pq, server_public_key_fingerprints } = res
       if (_ !== 'resPQ') 
         throw new Error('[MT] resPQ response invalid: ' + _)
       
@@ -78,16 +84,13 @@ const sendReqPQ = () => {
         fingerprints: server_public_key_fingerprints,
 
       })
-
       Auth.set({
         publicKey: selectKeyByFingerprint(server_public_key_fingerprints)
       })
-
       if (!Auth.get('publicKey')) {
         throw new Error('[MT] No public key found')
       }
       else console.log('Got MT public key')
-
       const hexPQ = bytesToHex(pq)
 
       console.log(performance.now(), 'factorization start')
@@ -107,30 +110,35 @@ const sendReqPQ = () => {
       Auth.set({ new_nonce: random })
 
       const { nonce, server_nonce, new_nonce, pq, publicKey } = Auth.get()
-
       const pq1 = transformNumber(pq)
       const q1 = transformNumber(q)
       const p1 = transformNumber(p)
 
-      const data1 = bytesFromHex('83c95aec').reverse()
-      .concat(pq1)
-      .concat(p1)
-      .concat(q1)
-      .concat(nonce)
-      .concat(server_nonce)
-      .concat(new_nonce)
+      const data = new Serialization()
+      data.store([
+        Serialization.name('83c95aec'),
+        Serialization.bytes(pq1),
+        Serialization.bytes(p1),
+        Serialization.bytes(q1),
+        Serialization.bytes(nonce),
+        Serialization.bytes(server_nonce),
+        Serialization.bytes(new_nonce),
+      ])
 
-      const dataWithHash = sha1Bytes(new Uint8Array(data1).buffer).concat(data1)
+      const dataWithHash = sha1Bytes(data.getBuffer()).concat(data.getBytes())
 
-      const req = bytesFromHex('d712e4be').reverse()
-      .concat(nonce)
-      .concat(server_nonce)
-      .concat(p1)
-      .concat(q1)
-      .concat(bytesFromHex(bigInt(publicKey.fingerprint).toString(16)).reverse())
-      .concat(transformString(rsaEncrypt(publicKey, dataWithHash)))
+      const req = new Serialization()
+      req.store([
+        Serialization.name('d712e4be'),
+        Serialization.bytes(nonce),
+        Serialization.bytes(server_nonce),
+        Serialization.bytes(p1),
+        Serialization.bytes(q1),
+        Serialization.bigInt(publicKey.fingerprint),
+        Serialization.byteString(rsaEncrypt(publicKey, dataWithHash))
+      ])
 
-      return sendRequest(new Uint8Array(req).buffer)
+      return sendRequest(req.getBuffer())
     })
     .then(([error, data, rawData]) => {
       if(error) throw new Error('Can\'t get DH!')
@@ -143,15 +151,17 @@ const sendReqPQ = () => {
       console.log(performance.now(), '[MT] Got server salt')
       const { serverSalt, authKey, authKeyID } = Auth.get()
       const wsSession = new Session({ serverSalt, authKey, authKeyID, dcID: 2 })
-      // setTimeout(() => {
-      //   wsSession.wrapAPI('auth.sendCode', {
-      //     flags: 0,
-      //     phone_number: '+79998303931',
-      //     api_id: Config.api_id,
-      //     api_hash: Config.api_hash,
-      //     lang_code: navigator.language || 'en'
-      //   })
-      // }, 0)
+      setTimeout(() => {
+        // wsSession.wrapAPI('auth.sendCode', {
+        //   flags: 0,
+        //   phone_number: 79998303931,
+        //   api_id: Config.api_id,
+        //   api_hash: Config.api_hash,
+        //   lang_code: navigator.language || 'en'
+        // })
+        // wsSession.wrapAPI('help.getNearestDc')
+        // wsSession.wrapAPI('help.getNearestDc')
+      }, 1000)
       localStorage.setItem('auth', JSON.stringify(Auth.get()))
     })
 }

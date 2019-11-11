@@ -4,7 +4,7 @@ import CTR from 'crypto-js/mode-ctr'
 
 import padding from 'crypto-js/pad-nopadding'
 
-import { bytesToWords, bytesFromWords, bytesFromHex, addPadding, bytesToHex } from '../helpers/bytes'
+import { bytesFromWords, bytesFromHex, addPadding, bytesToHex } from '../helpers/bytes'
 
 import core from 'crypto-js/core'
 
@@ -26,35 +26,34 @@ const IGE = (function () {
        *
        * @example
        *
-       *     mode.processBlock(data.words, offset);
+       *     mode.processBlock(data.words, offset)
        */
       processBlock: function (words, offset) {
           // Shortcuts
-          var cipher = this._cipher;
-          var blockSize = cipher.blockSize;
+          var cipher = this._cipher
+          var blockSize = cipher.blockSize
 
           if (this._ivp === undefined) {
             this._ivp = this._iv.slice(0, blockSize);
-            this._iv2p = this._iv.slice(blockSize, blockSize + blockSize);
+            this._iv2p = this._iv.slice(blockSize, blockSize + blockSize)
           }
 
 
           // Remember this block to use with next block
-          var nextIv2p = words.slice(offset, offset + blockSize);
+          var nextIv2p = words.slice(offset, offset + blockSize)
 
           // XOR with previous ciphertext
-          xorBlock(words, this._ivp, offset, blockSize);
+          xorBlock(words, this._ivp, offset, blockSize)
 
           // Block cipher
-          cipher.encryptBlock(words, offset);
+          cipher.encryptBlock(words, offset)
 
           // XOR with previous plaintext
-          xorBlock(words, this._iv2p, offset, blockSize);
-
-          this._ivp = words.slice(offset, offset + blockSize);
-          this._iv2p = nextIv2p;
+          xorBlock(words, this._iv2p, offset, blockSize)
+          this._ivp = words.slice(offset, offset + blockSize)
+          this._iv2p = nextIv2p
       }
-  });
+  })
 
   /**
    * IGE decryptor.
@@ -68,41 +67,40 @@ const IGE = (function () {
        *
        * @example
        *
-       *     mode.processBlock(data.words, offset);
+       *     mode.processBlock(data.words, offset)
        */
       processBlock: function (words, offset) {
           // Shortcuts
-          var cipher = this._cipher;
-          var blockSize = cipher.blockSize;
+          var cipher = this._cipher
+          var blockSize = cipher.blockSize
 
           if (this._ivp === undefined) {
             this._ivp = this._iv.slice(0, blockSize);
-            this._iv2p = this._iv.slice(blockSize, 2 * blockSize);
+            this._iv2p = this._iv.slice(blockSize, 2 * blockSize)
           }
 
           // Remember this block to use with next block
-          var nextIvp = words.slice(offset, offset + blockSize);
+          var nextIvp = words.slice(offset, offset + blockSize)
 
           // XOR with previous ciphertext
-          xorBlock(words, this._iv2p, offset, blockSize);
+          xorBlock(words, this._iv2p, offset, blockSize)
 
           // Block cipher
-          cipher.decryptBlock(words, offset);
+          cipher.decryptBlock(words, offset)
 
           // XOR with previous plaintext
-          xorBlock(words, this._ivp, offset, blockSize);
+          xorBlock(words, this._ivp, offset, blockSize)
 
-          this._ivp = nextIvp;
-          this._iv2p = words.slice(offset, offset + blockSize);
+          this._ivp = nextIvp
+          this._iv2p = words.slice(offset, offset + blockSize)
       }
   });
 
   function xorBlock(words, block, offset, blockSize) {
       for (var i = 0; i < blockSize; i++) {
-          words[offset + i] ^= block[i];
+          words[offset + i] ^= block[i]
       }
   }
-
   return IGE
 }())
 
@@ -121,6 +119,7 @@ const decrypt = (encryptedBytes, keyBytes, ivBytes, ws) => {
 }
 
 const encrypt = (bytes, keyBytes, ivBytes, ws) => {
+  bytes = bytes.byteLength ? [...new Uint8Array(bytes)] : bytes
   bytes = addPadding(bytes)
   const hex = bytesToHex(bytes)
   const key = bytesToHex(keyBytes)
@@ -130,8 +129,6 @@ const encrypt = (bytes, keyBytes, ivBytes, ws) => {
     padding,
     mode: ws ? CTR : IGE,
   })
-
-  console.log('1______2___________3', )
   return bytesFromWords(encryptedWords)
 }
 

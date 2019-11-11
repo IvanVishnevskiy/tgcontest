@@ -32,7 +32,6 @@ const prepareRequest = requestBuffer => {
   header.storeLongP(0, 0, 'auth_key_id')
   header.storeLong(getMessageID(), 'msg_id')
   header.storeInt(requestLength, 'request_length')
-  console.log(201, getMessageID(), requestLength, header.getBuffer(), resultBuffer)
   const headerBuffer = header.getBuffer()
   const headerArray = new Int32Array(headerBuffer)
   const headerLength = headerBuffer.byteLength
@@ -45,16 +44,15 @@ const prepareRequest = requestBuffer => {
   return [ resultArray, resultBuffer ]
 }
 
-const sendRequest = requestBuffer => {
+const sendRequest = (requestBuffer, prepared) => {
   
   const [ resultArray, resultBuffer ] = prepareRequest(requestBuffer)
 
-  console.log('[MT] Sending request with length:', resultBuffer.byteLength, resultBuffer)
+  console.log('[MT] Sending request with length:', resultBuffer.byteLength, requestBuffer)
 
   return fetch('http://149.154.167.40/apiw1_test', {
     method: 'POST',
-    // body: new Uint8Array(auth1)
-    body: resultArray
+    body: prepared ? requestBuffer : resultArray
   })
   .then(data => data.arrayBuffer())
   .then(data => {

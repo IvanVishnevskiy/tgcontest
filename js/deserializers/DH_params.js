@@ -80,32 +80,11 @@ const parseInnerData = (innerData, hash) => {
 const deserializer = data => {
   console.log(performance.now(), 'DH Params deserializer start')
   const encrypted_answer = data.slice(40, 632)
-  const server_nonce1 = data.slice(20, 36)
-  const nonce1 = data.slice(4, 20)
+  // const server_nonce1 = data.slice(20, 36)
+  // const nonce1 = data.slice(4, 20)
 
   const { new_nonce, server_nonce } = Auth.get()
 
-  const aes = sha1Bytes(
-    new_nonce
-    .concat(server_nonce)
-    .concat(sha1Bytes(
-      server_nonce
-      .concat(new_nonce)
-    ))
-    .slice(0, 12)
-  )
-
-  const aesIv = sha1Bytes(
-    server_nonce
-    .concat(new_nonce)
-    .slice(12)
-    .concat(
-      sha1Bytes(
-        [].concat(new_nonce, new_nonce)
-      ),
-      new_nonce.slice(0, 4)
-    )
-  )
   const auth = { newNonce: new_nonce, serverNonce: server_nonce }
 
   const tmpAesKey = sha1Bytes(auth.newNonce.concat(auth.serverNonce)).concat(sha1Bytes(auth.serverNonce.concat(auth.newNonce)).slice(0, 12))
