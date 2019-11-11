@@ -9,4 +9,11 @@ Config.Schema.API = {"constructors":[{"id":"-1132882121","predicate":"boolFalse"
 
 Config.Schema.API.layer = 74
 
+Config.api_id = 1186457
+Config.api_hash = '245636a104ae9d55665a27359d836aa2'
+
+Config.App = {}
+
+Config.App.version = '0.0.1'
+
 export default Config

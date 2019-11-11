@@ -1,4 +1,6 @@
-const wrapApiCall = (method, params, options) => {
+import Config from '../Config'
+
+const apiCall = (method, params, options) => {
   var serializer = new TLSerialization(options)
 
   if (!this.connectionInited) {

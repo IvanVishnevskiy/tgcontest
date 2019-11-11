@@ -24,6 +24,8 @@ import sendClientDH from './auth/sendClientDH'
 import { randomBytes } from 'crypto'
 
 import AES from './crypto/AES'
+import Session from './auth/session'
+import Config from './Config'
 
 window.bigInt = bigInt
 
@@ -139,112 +141,32 @@ const sendReqPQ = () => {
     })
     .then(done => {
       console.log(performance.now(), '[MT] Got server salt')
+      const { serverSalt, authKey, authKeyID } = Auth.get()
+      const wsSession = new Session({ serverSalt, authKey, authKeyID, dcID: 2 })
+      // setTimeout(() => {
+      //   wsSession.wrapAPI('auth.sendCode', {
+      //     flags: 0,
+      //     phone_number: '+79998303931',
+      //     api_id: Config.api_id,
+      //     api_hash: Config.api_hash,
+      //     lang_code: navigator.language || 'en'
+      //   })
+      // }, 0)
       localStorage.setItem('auth', JSON.stringify(Auth.get()))
     })
 }
 
 sendReqPQ()
 
-const ws = new WebSocket('wss://venus.web.telegram.org:443/apiws_test', ['binary'])
+// const wsSession = new Session()
 
-ws.onopen = () => {
-  console.log(1000, 'ws is open')
-  // ws.send(new Uint8Array(bytes).buffer)
-  initWS()
-}
-ws.onclose = e => {
-  console.log(1001, 'ws closed!', e)
-}
-ws.onerror = e => {
-  console.log(1002, 'ws errored', e)
-}
-ws.onmessage = m => {
-  console.log(1003, 'message from vs', m)
-}
-
-const initWS = () => {
-  console.log(performance.now(), 'Init WS start')
-  let payload 
-
-  // Abridged protocol
-  const protocol = [0xfe, 0xfe, 0xfe, 0xfe]
-
-  while(!payload) {
-    const bytes = [...randomBytes(60)].concat(protocol)
-    if(bytes[0] === 0xef) continue
-    
-    // first int
-    const f = bytesToHex(bytes.slice(0, 4))
-    if(
-      f === '44414548' || 
-      f === '54534f50' || 
-      f === '20544547' ||
-      f === '4954504f' ||
-      f === 'dddddddd' ||
-      f === 'eeeeeeee'
-    ) continue
-
-    // second int
-    const s = bytesToHex(bytes.slice(4, 8))
-    if(s === '00000000') continue
-
-    payload = bytes
-  }
-
-  const finalPayload = obfuscateWSMessage(payload)
-  
-
-  // ws.send(new Uint8Array(finalPayload).buffer)
-}
-
-const obfuscateWSMessage = message => {
-  const messageReversed = message.reverse()
-
-  const encryptKey = message.slice(8, 40)
-  const encryptIV = message.slice(40, 56)
-
-  const decryptKey = messageReversed.slice(8, 40)
-  const decryptIV = messageReversed.slice(40, 56)
-
-  const encryptedMessage = AES.encryptWS(encryptKey, encryptIV, message)
-  const finalMessage = message.slice(0, 56).concat(encryptedMessage.slice(56, 64))
-
-  return finalMessage
-}
-
-const prepareWSMessage = data => {
-  const protocol = 0xef
-  const length = data.length >> 2
-
-  if(length < 127) return [length].concat(data)
-  else return [protocol]
-  .concat(addPadding(bytesFromHex(Number(data.length).toString(16)), 3))
-  .concat(data)
-}
-
-const writeWS = data => {
-  const message = prepareWSMessage(data)
-  console.log(message)
-}
-
-// initRev := strrev(init)
-
-// encryptKey := substr(init, 8, 32)
-// encryptIV := substr(init, 40, 16)
-
-// decryptKey := substr(initRev, 8, 32)
-// decryptIV := substr(initRev, 40, 16)
-
-// secret := substr(0xdd99999999999999999999999999999999, 1, 16)
-
-// encryptKey = SHA256(encryptKey + secret)
-// decryptKey = SHA256(decryptKey + secret)
-
-// encryptedInit := CTR(encryptKey, encryptIV, init)
-
-// finalInit := substr(init, 0, 56) + substr(encryptedInit, 56, 8)
-
-// write(finalInit)
+// wsSession.wrapAPI('auth.sendCode', {
+//   flags: 0,
+//   phone_number: '+79998303931',
+//   api_id: Config.api_id,
+//   api_hash: Config.api_hash,
+//   lang_code: navigator.language || 'en'
+// })
 
 export { $G, $GS }
 

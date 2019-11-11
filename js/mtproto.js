@@ -17,8 +17,7 @@ const parseRawData = data => {
   return { message_id, message_length, data: res }
 }
 
-const sendRequest = requestBuffer => {
-  
+const prepareRequest = requestBuffer => {
   if(!requestBuffer.byteLength) {
     const resultBuffer = new ArrayBuffer(requestBuffer.length)
     const resultArray = new Int32Array(resultBuffer)
@@ -33,7 +32,7 @@ const sendRequest = requestBuffer => {
   header.storeLongP(0, 0, 'auth_key_id')
   header.storeLong(getMessageID(), 'msg_id')
   header.storeInt(requestLength, 'request_length')
-
+  console.log(201, getMessageID(), requestLength, header.getBuffer(), resultBuffer)
   const headerBuffer = header.getBuffer()
   const headerArray = new Int32Array(headerBuffer)
   const headerLength = headerBuffer.byteLength
@@ -43,8 +42,14 @@ const sendRequest = requestBuffer => {
 
   resultArray.set(headerArray)
   resultArray.set(requestArray, headerArray.length)
+  return [ resultArray, resultBuffer ]
+}
 
-  console.log('[MT] Sending request with length:', resultBuffer.byteLength)
+const sendRequest = requestBuffer => {
+  
+  const [ resultArray, resultBuffer ] = prepareRequest(requestBuffer)
+
+  console.log('[MT] Sending request with length:', resultBuffer.byteLength, resultBuffer)
 
   return fetch('http://149.154.167.40/apiw1_test', {
     method: 'POST',
@@ -64,4 +69,4 @@ const sendRequest = requestBuffer => {
   })
 }
 
-export { sendRequest }
+export { sendRequest, prepareRequest }

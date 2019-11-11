@@ -1,8 +1,10 @@
 import AES from 'crypto-js/aes'
-import padding from 'crypto-js/pad-zeropadding'
+// import padding from 'crypto-js/pad-zeropadding'
 import CTR from 'crypto-js/mode-ctr'
 
-import { bytesToWords, bytesFromWords, addPadding } from '../helpers/bytes'
+import padding from 'crypto-js/pad-nopadding'
+
+import { bytesToWords, bytesFromWords, bytesFromHex, addPadding, bytesToHex } from '../helpers/bytes'
 
 import core from 'crypto-js/core'
 
@@ -106,24 +108,30 @@ const IGE = (function () {
 
 
 const decrypt = (encryptedBytes, keyBytes, ivBytes, ws) => {
-  var decryptedWords = AES.decrypt({ciphertext: bytesToWords(encryptedBytes)}, bytesToWords(keyBytes), {
-    iv: bytesToWords(ivBytes),
+  const encrypted = bytesToHex(encryptedBytes)
+  const key = bytesToHex(keyBytes)
+  const iv = bytesToHex(ivBytes)
+  var decryptedWords = AES.decrypt({ciphertext: core.enc.Hex.parse(encrypted)}, core.enc.Hex.parse(key), {
+    iv: core.enc.Hex.parse(iv),
     padding,
     mode: ws ? CTR : IGE
   })
 
-  return bytesFromWords(decryptedWords)
+  return ws ? bytesFromHex(decryptedWords.toString(core.format.Hex)) : bytesFromWords(decryptedWords)
 }
 
 const encrypt = (bytes, keyBytes, ivBytes, ws) => {
-
   bytes = addPadding(bytes)
-
-  const encryptedWords = AES.encrypt(bytesToWords(bytes), bytesToWords(keyBytes), {
-    iv: bytesToWords(ivBytes),
+  const hex = bytesToHex(bytes)
+  const key = bytesToHex(keyBytes)
+  const iv = bytesToHex(ivBytes)
+  const encryptedWords = AES.encrypt(core.enc.Hex.parse(hex), core.enc.Hex.parse(key), {
+    iv: core.enc.Hex.parse(iv),
     padding,
-    mode: ws ? CTR : IGE
+    mode: ws ? CTR : IGE,
   })
+
+  console.log('1______2___________3', )
   return bytesFromWords(encryptedWords)
 }
 

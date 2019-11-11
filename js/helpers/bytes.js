@@ -4,6 +4,8 @@ import { toByteArray } from './BigInt'
 
 import cryptoCore from 'crypto-js/core'
 
+import SHA256 from 'crypto-js/sha256'
+
 let rushaInstance
 
 const compareBytes = (b1 = [], b2 = []) => {
@@ -65,6 +67,21 @@ const bytesToArrayBuffer = b => new Uint8Array(b).buffer
 const sha1Hash = b => {
   rushaInstance = rushaInstance || new Rusha(1024 * 1024)
   const hashBytes = rushaInstance.rawDigest(b).buffer
+  return hashBytes
+}
+
+// const sha256Hash = b => {
+//   const hashWords = SHA256(bytesToWords(b))
+//   return bytesFromWords(hashWords)
+// }
+
+function sha256Hash (bytes) {
+  // console.log(dT(), 'SHA-2 hash start', bytes.byteLength || bytes.length)
+  var hashWords = SHA256(bytesToWords(bytes))
+  // console.log(dT(), 'SHA-2 hash finish')
+
+  var hashBytes = bytesFromWords(hashWords)
+
   return hashBytes
 }
 
@@ -136,7 +153,8 @@ export {
   bytesFromArrayBuffer, 
   bytesToArrayBuffer,
   sha1Bytes, 
-  sha1Hash, 
+  sha1Hash,
+  sha256Hash,
   addPadding, 
   bytesFromBigInt,
   bytesToWords,
