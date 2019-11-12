@@ -155,6 +155,11 @@ class Session {
     return bytesLength.concat(data)
   }
 
+  preparePayload = payload => {
+    const [,buffer] = prepareRequest(payload)
+    return [...new Uint8Array(buffer)]
+  }
+
   send = message => {
     message = message.byteLength ? [...new Uint8Array(message)] : message
     const finalMessage = [...new Uint8Array(this.enc.encrypt(this.prepareWSMessage(message)))] 
@@ -213,8 +218,8 @@ class Session {
       name('60469778'),
       bytes(nonce)
     ])
-    const [,buffer] = prepareRequest(data.getBytes())
-    this.send(buffer)
+    const payload = this.preparePayload(data.getBytes())
+    this.send(payload)
   }
 
   wrapAPI = (method, params = {}, options = {}) => this.waitForOpen.then(() => {
