@@ -1,12 +1,10 @@
 import highEntropyRandom from '../helpers/highEntropyRandom'
 import AES from '../crypto/AES'
-import { randomBytes } from 'crypto'
-import { bytesToHex, sha256Hash, bytesFromHex } from '../helpers/bytes'
+import { bytesToHex, sha256Hash, bytesFromHex, compareBytes } from '../helpers/bytes'
 import Config from '../Config'
-import { TLSerialization } from '../TLHelpers'
+import { TLSerialization, TLDeserialization } from '../TLHelpers'
 import { addPadding } from '../helpers/bytes'
-import nextRandomInt from '../helpers/nextRandomInt'
-import { prepareRequest, sendRequest } from '../mtproto'
+import { prepareRequest } from '../mtproto'
 
 import getMessageID from '../helpers/getMessageID'
 
@@ -15,15 +13,11 @@ import aesjs from 'aes-js'
 import SHA256 from 'crypto-js/sha256'
 import { Serialization } from '../helpers/TL'
 
-function bufferConcat (buffer1, buffer2) {
-  var l1 = buffer1.byteLength || buffer1.length
-  var l2 = buffer2.byteLength || buffer2.length
-  var tmp = new Uint8Array(l1 + l2)
-  tmp.set(buffer1 instanceof ArrayBuffer ? new Uint8Array(buffer1) : buffer1, 0)
-  tmp.set(buffer2 instanceof ArrayBuffer ? new Uint8Array(buffer2) : buffer2, l1)
-
-  return tmp.buffer
-}
+const blobToBuffer = blob => new Promise(resolve => {
+  const fileReader = new FileReader()
+  fileReader.onload = event => resolve(event.target.result)
+  fileReader.readAsArrayBuffer(blob)
+})
 
 class Session {
   constructor(params) {
@@ -53,6 +47,8 @@ class Session {
     }
     ws.onmessage = m => {
       console.log(1003, 'message from vs', m)
+      blobToBuffer(m.data)
+      .then(this.parseWSMessage)
     }
   }
 
@@ -156,7 +152,7 @@ class Session {
   }
 
   preparePayload = payload => {
-    const [,buffer] = prepareRequest(payload)
+    const [,buffer] = prepareRequest(payload, this.authKeyID)
     return [...new Uint8Array(buffer)]
   }
 
@@ -182,14 +178,6 @@ class Session {
       string(navigator.language || 'en'),
     ])
 
-    console.log(
-      Config.Schema.API.layer,
-      Config.api_id,
-      navigator.userAgent || 'Unknown UserAgent',
-      navigator.platform || 'Unknown Platform',
-      Config.App.version
-    )
-
     const serializer = new TLSerialization(options)
     serializer.storeInt(0xda9b0d0d, 'invokeWithLayer')
     serializer.storeInt(Config.Schema.API.layer, 'layer')
@@ -201,8 +189,8 @@ class Session {
     serializer.storeString(navigator.language || 'en', 'system_lang_code')
     serializer.storeString('', 'lang_pack')
     serializer.storeString(navigator.language || 'en', 'lang_code')
-    console.log(serializer.getBytes(), data.getBytes())
-    return serializer
+    console.log(data.getBytes(), serializer.getBytes())
+    return data
 
   }
 
@@ -212,11 +200,12 @@ class Session {
 
   sendGetNearestDC = () => {
     const { name, bytes, int, string } = Serialization
+    const wrapped = this.initSessionWrapper().getBytes()
+    console.log(wrapped)
     const data = new Serialization()
-    const nonce = highEntropyRandom(16)
     data.store([
-      name('60469778'),
-      bytes(nonce)
+      bytes(wrapped),
+      name('c4f9186b'),
     ])
     const payload = this.preparePayload(data.getBytes())
     this.send(payload)
@@ -281,6 +270,21 @@ class Session {
       // )
       this.send(request.getBuffer())
     })
+  }
+
+  parseWSMessage = buffer => {
+    const decrypted = this.dec.decrypt(new Uint8Array(buffer))
+    console.log(decrypted)
+    var deserializer = new TLDeserialization(buffer)
+      console.log(buffer)
+      var authKeyID = deserializer.fetchIntBytes(64, false, 'auth_key_id')
+      if (!compareBytes(authKeyID, this.authKeyID)) {
+        console.log(authKeyID, this.authKeyID)
+        throw new Error('[MT] Invalid server auth_key_id: ')
+      }
+      var msgKey = deserializer.fetchIntBytes(128, true, 'msg_key')
+      var encryptedData = deserializer.fetchRawBytes(buffer.byteLength - deserializer.getOffset(), true, 'encrypted_data')
+      console.log(encryptedData)
   }
 }
 

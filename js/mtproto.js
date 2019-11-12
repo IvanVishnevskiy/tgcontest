@@ -3,6 +3,7 @@ import { TLSerialization, TLDeserialization } from './TLHelpers'
 import getMessageID from './helpers/getMessageID'
 import { bytesToHex } from './helpers/bytes'
 import bigInt from 'big-integer'
+import { Serialization } from './helpers/TL'
 
 const parseRawData = data => {
   const view = new Uint8Array(data)
@@ -17,29 +18,30 @@ const parseRawData = data => {
   return { message_id, message_length, data: res }
 }
 
-const prepareRequest = request => {
+const prepareRequest = (request, authKeyID) => {
   const requestBuffer = request.bytesLength ? request : new Uint8Array(request).buffer
-  if(!requestBuffer.byteLength) {
-    const resultBuffer = new ArrayBuffer(requestBuffer.length)
-    const resultArray = new Int32Array(resultBuffer)
-    resultArray.set(resultBuffer)
-    requestBuffer = resultArray.buffer
-  }
   const requestLength = requestBuffer.byteLength || requestBuffer.length
   const requestArray = new Int32Array(requestBuffer)
 
-  const header = new TLSerialization()
+  const emptyAuthKey = [0, 0, 0, 0, 0, 0, 0, 0]
 
-  header.storeLongP(0, 0, 'auth_key_id')
-  header.storeLong(getMessageID(), 'msg_id')
-  header.storeInt(requestLength, 'request_length')
+  const id = getMessageID()
+
+  const header = new Serialization()
+  header.store([
+    Serialization.bytes(authKeyID || emptyAuthKey),
+    Serialization.int(id),
+    Serialization.padding(Serialization.int(requestLength).reverse())
+  ])
+
+  console.log(header.getBytes(), Serialization.int(id))
+
   const headerBuffer = header.getBuffer()
   const headerArray = new Int32Array(headerBuffer)
   const headerLength = headerBuffer.byteLength
 
   const resultBuffer = new ArrayBuffer(headerLength + requestLength)
   const resultArray = new Int32Array(resultBuffer)
-
   resultArray.set(headerArray)
   resultArray.set(requestArray, headerArray.length)
   return [ resultArray, resultBuffer ]

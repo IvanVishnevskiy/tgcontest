@@ -19,9 +19,10 @@ class Serialization {
     
     return bytes
   }
-  
+
   static bytes = bytes => bytes
   static int = int => this.hex(Number(int).toString(16))
+  static padding = (arr, blockSize = 4) => this.addPadding(arr, blockSize)
   static buffer = buffer => [...new Uint8Array(buffer)]
   static name = name => this.hex(name).reverse()
   static bigInt = bigint => this.hex(bigInt(bigint).toString(16)).reverse()
