@@ -17,7 +17,8 @@ const parseRawData = data => {
   return { message_id, message_length, data: res }
 }
 
-const prepareRequest = requestBuffer => {
+const prepareRequest = request => {
+  const requestBuffer = request.bytesLength ? request : new Uint8Array(request).buffer
   if(!requestBuffer.byteLength) {
     const resultBuffer = new ArrayBuffer(requestBuffer.length)
     const resultArray = new Int32Array(resultBuffer)
@@ -48,7 +49,7 @@ const sendRequest = (requestBuffer, prepared) => {
   
   const [ resultArray, resultBuffer ] = prepareRequest(requestBuffer)
 
-  console.log('[MT] Sending request with length:', resultBuffer.byteLength, requestBuffer)
+  console.log('[MT] Sending request with length:', resultBuffer.byteLength, resultBuffer)
 
   return fetch('http://149.154.167.40/apiw1_test', {
     method: 'POST',

@@ -13,6 +13,7 @@ import getMessageID from '../helpers/getMessageID'
 import aesjs from 'aes-js'
 
 import SHA256 from 'crypto-js/sha256'
+import { Serialization } from '../helpers/TL'
 
 function bufferConcat (buffer1, buffer2) {
   var l1 = buffer1.byteLength || buffer1.length
@@ -41,6 +42,7 @@ class Session {
       this.signalWSConnected()
       // ws.send(new Uint8Array(bytes).buffer)
       this.initWS()
+      this.sendGetNearestDC()
     }
     ws.onclose = e => {
       console.log(1001, 'ws closed!', e)
@@ -144,19 +146,6 @@ class Session {
     const encryptedPayload = [...new Uint8Array(this.enc.encrypt(payload))]
     const finalPayload = payload.slice(0, 56).concat(encryptedPayload.slice(56, 64))
     this.ws.send(new Uint8Array(finalPayload).buffer)
-
-    const nonce = []
-    for (let i = 0; i < 16; i++) {
-      nonce.push(nextRandomInt(0xFF))
-    }
-
-
-    const reqPQ = bytesFromHex('1fb33026').reverse()
-
-
-
-    const [ , buffer ] = prepareRequest(new Uint8Array(reqPQ).buffer)
-    this.send(buffer)
   }
 
   prepareWSMessage = data => {
@@ -167,12 +156,35 @@ class Session {
   }
 
   send = message => {
-    message = [...new Uint8Array(message)]
+    message = message.byteLength ? [...new Uint8Array(message)] : message
     const finalMessage = [...new Uint8Array(this.enc.encrypt(this.prepareWSMessage(message)))] 
     this.ws.send(new Uint8Array(finalMessage).buffer)
   }
 
   initSessionWrapper = options => {
+    const { name, int, string } = Serialization
+    const data = new Serialization()
+    data.store([
+      name('da9b0d0d'), // invokeWithLayer
+      int(105), // layer
+      name('785188b8'), // initConnection
+      int(Config.api_id),
+      string(navigator.userAgent || 'Unknown UserAgent'),
+      string(navigator.platform || 'Unknown Platform'),
+      string(Config.App.version),
+      string(navigator.language || 'en'),
+      string(''),
+      string(navigator.language || 'en'),
+    ])
+
+    console.log(
+      Config.Schema.API.layer,
+      Config.api_id,
+      navigator.userAgent || 'Unknown UserAgent',
+      navigator.platform || 'Unknown Platform',
+      Config.App.version
+    )
+
     const serializer = new TLSerialization(options)
     serializer.storeInt(0xda9b0d0d, 'invokeWithLayer')
     serializer.storeInt(Config.Schema.API.layer, 'layer')
@@ -184,7 +196,9 @@ class Session {
     serializer.storeString(navigator.language || 'en', 'system_lang_code')
     serializer.storeString('', 'lang_pack')
     serializer.storeString(navigator.language || 'en', 'lang_code')
+    console.log(serializer.getBytes(), data.getBytes())
     return serializer
+
   }
 
   connect = () => {
@@ -192,9 +206,15 @@ class Session {
   }
 
   sendGetNearestDC = () => {
-    bytesFromHex('da9b0d0d').reverse()
-    .concat(bytesFromHex(Number(Config.Schema.API.layer).toString(16)))
-    .concat(bytesFromHex('c7481da6'))
+    const { name, bytes, int, string } = Serialization
+    const data = new Serialization()
+    const nonce = highEntropyRandom(16)
+    data.store([
+      name('60469778'),
+      bytes(nonce)
+    ])
+    const [,buffer] = prepareRequest(data.getBytes())
+    this.send(buffer)
   }
 
   wrapAPI = (method, params = {}, options = {}) => this.waitForOpen.then(() => {
