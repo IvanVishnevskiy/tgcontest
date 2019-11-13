@@ -32,21 +32,23 @@ class Session {
     const ws = new WebSocket('wss://venus.web.telegram.org:443/apiws_test', ['binary'])
     this.ws = ws
     ws.onopen = () => {
-      console.log(1000, 'ws is open')
+      console.log('[WS] open')
       this.signalWSConnected()
       // ws.send(new Uint8Array(bytes).buffer)
       this.initWS()
-      this.sendGetNearestDC()
+      setTimeout(() => {
+        this.sendGetNearestDC()
+      }, 1000)
     }
     ws.onclose = e => {
-      console.log(1001, 'ws closed!', e)
+      console.log('[WS] closed', e)
     }
     ws.onerror = e => {
       this.signalWSConnected()
-      console.log(1002, 'ws errored', e)
+      console.error('[WS] error', e)
     }
     ws.onmessage = m => {
-      console.log(1003, 'message from vs', m)
+      console.log('[WS] got message', m)
       blobToBuffer(m.data)
       .then(this.parseWSMessage)
     }
@@ -163,34 +165,39 @@ class Session {
   }
 
   initSessionWrapper = options => {
-    const { name, int, string } = Serialization
+    const { name, int, string, padding, bytes } = Serialization
     const data = new Serialization()
+
+    console.log(navigator.platform)
+
     data.store([
       name('da9b0d0d'), // invokeWithLayer
-      int(105), // layer
+      padding(int(105)), // layer
       name('785188b8'), // initConnection
-      int(Config.api_id),
+      bytes([0, 0, 0, 0]),
+      padding(int(Config.api_id)),
       string(navigator.userAgent || 'Unknown UserAgent'),
       string(navigator.platform || 'Unknown Platform'),
       string(Config.App.version),
-      string(navigator.language || 'en'),
+      string('en'),
       string(''),
-      string(navigator.language || 'en'),
+      string('en'),
     ])
 
     const serializer = new TLSerialization(options)
     serializer.storeInt(0xda9b0d0d, 'invokeWithLayer')
-    serializer.storeInt(Config.Schema.API.layer, 'layer')
-    serializer.storeInt(0xc7481da6, 'initConnection')
+    serializer.storeInt(105, 'layer')
+    serializer.storeInt(0x785188b8, 'initConnection')
+    serializer.storeRawBytes([0, 0, 0, 0], 'flags')
     serializer.storeInt(Config.api_id, 'api_id')
     serializer.storeString(navigator.userAgent || 'Unknown UserAgent', 'device_model')
     serializer.storeString(navigator.platform || 'Unknown Platform', 'system_version')
     serializer.storeString(Config.App.version, 'app_version')
-    serializer.storeString(navigator.language || 'en', 'system_lang_code')
+    serializer.storeString('en', 'system_lang_code')
     serializer.storeString('', 'lang_pack')
-    serializer.storeString(navigator.language || 'en', 'lang_code')
+    serializer.storeString('en', 'lang_code')
     console.log(data.getBytes(), serializer.getBytes())
-    return data
+    return serializer
 
   }
 
@@ -199,16 +206,28 @@ class Session {
   }
 
   sendGetNearestDC = () => {
-    const { name, bytes, int, string } = Serialization
+    const { name, bytes, int, string, hex } = Serialization
     const wrapped = this.initSessionWrapper().getBytes()
-    console.log(wrapped)
     const data = new Serialization()
     data.store([
       bytes(wrapped),
-      name('c4f9186b'),
+      name('1fb33026'),
     ])
-    const payload = this.preparePayload(data.getBytes())
-    this.send(payload)
+
+    console.log(bytesToHex(wrapped))
+
+    const seq_no = this.getSeqNo() + 1
+    const msg_id = getMessageID()
+    const dcID = this.dcID
+    console.log(seq_no, msg_id, dcID)
+    const message = {
+      msg_id,
+      seq_no,
+      body: data.getBytes(),
+      isAPI: true,
+      dcID
+    }
+    return this.sendRequest(message)
   }
 
   wrapAPI = (method, params = {}, options = {}) => this.waitForOpen.then(() => {
@@ -222,7 +241,7 @@ class Session {
     console.log(method, params, options)
     options.resultType = serializer.storeMethod(method, params)
     const messageID = getMessageID()
-    const seqNo = this.getSeqNo(true)
+    const seqNo = this.getSeqNo(true) + 1
 
     const message = {
       msg_id: messageID,
@@ -246,9 +265,20 @@ class Session {
   }
 
   sendRequest = message => {
+    const { bytes, paddingBytes, paddingInt, hex } = Serialization
     const options = {}
-    const data = new TLSerialization({ startMaxLength: message.body.length + 2048 })
     const { serverSalt, authKeyID, sessionID } = this
+
+    const d = new Serialization()
+    d.store([
+      paddingBytes(serverSalt, 8),
+      paddingBytes(sessionID, 8),
+      Serialization.padding(hex(message.msg_id)),
+      paddingInt(message.seq_no),
+      paddingInt(message.body.length),
+      bytes(message.body)
+    ])
+    const data = new TLSerialization({ startMaxLength: message.body.length + 2048 })
     data.storeIntBytes(serverSalt, 64, 'salt')
     data.storeIntBytes(sessionID, 64, 'session_id')
     data.storeLong(message.msg_id, 'message_id')
@@ -257,17 +287,36 @@ class Session {
     data.storeInt(message.body.length, 'message_data_length')
     data.storeRawBytes(message.body, 'message_data')
 
-    const paddingLength = (16 - (data.offset % 16)) + 16 * (1 + Math.floor(Math.random() * 5))
+    console.log(
+      '__________________',
+      serverSalt, sessionID, message.msg_id, message.seq_no, message.body.length, bigInt(message.msg_id).toString(16)
+    )
+    console.log(d.getBytes(), data.getBytes())
+    const paddingLength = 4
+    console.log(paddingLength)
     const padding = highEntropyRandom(paddingLength)
+
+
     const dataWithPadding = data.getBytes().concat(padding)
+    console.log(dataWithPadding, dataWithPadding.length, dataWithPadding.length % 4)
     return this.encryptRequest(dataWithPadding).then(encryptedResult => {
+      const { bytes, int, padding } = Serialization
+      const req = new Serialization()
+      req.store([
+        bytes(authKeyID),
+        bytes(encryptedResult.msgKey),
+        padding(int(encryptedResult.bytes.length).reverse()),
+        bytes(encryptedResult.bytes)
+      ])
+
+      console.log(')))))))))))))', authKeyID, encryptedResult.msgKey, encryptedResult.bytes.length)
+
       const request = new TLSerialization({startMaxLength: encryptedResult.bytes.byteLength + 256})
       request.storeIntBytes(authKeyID, 64, 'auth_key_id')
       request.storeIntBytes(encryptedResult.msgKey, 128, 'msg_key')
+      request.storeInt(encryptedResult.bytes.length, 'encrypted_data_length')
       request.storeRawBytes(encryptedResult.bytes, 'encrypted_data')
-      // sendRequest(request.getBuffer(), true).then(
-      //   req => console.log(req)
-      // )
+      
       this.send(request.getBuffer())
     })
   }

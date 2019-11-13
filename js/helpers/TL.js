@@ -19,8 +19,9 @@ class Serialization {
     
     return bytes
   }
-
   static bytes = bytes => bytes
+  static paddingBytes = (bytes, padding = 4) => this.padding(this.bytes(bytes), padding)
+  static paddingInt = int => this.padding(this.int(int))
   static int = int => this.hex(Number(int).toString(16))
   static padding = (arr, blockSize = 4) => this.addPadding(arr, blockSize)
   static buffer = buffer => [...new Uint8Array(buffer)]
@@ -53,9 +54,11 @@ class Serialization {
     let res = []
     const sUTF8 = unescape(encodeURIComponent(string))
     const length = sUTF8.length
-    if (length <= 253) res.push(length)
-    else res = res.concat([254, length & 0xFF, (length & 0xFF00) >> 8, (length & 0xFF0000) >> 16])
-    for (var i = 0; i < length; i++) res.push(sUTF8.charCodeAt(i))
+    if (length <= 253) 
+      res.push(length)
+    
+    else res = res.concat([254, length & 0xFF, (length & 0xFF00) >> 8, (length & 0xFF0000) >> 16]).reverse()
+    for (let i = 0; i < length; i++) res.push(sUTF8.charCodeAt(i))
     while (res.length % 4 !== 0) res.push(0) // padding
     return res
   }
