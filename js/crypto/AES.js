@@ -112,7 +112,7 @@ const decrypt = (encryptedBytes, keyBytes, ivBytes, ws) => {
   var decryptedWords = AES.decrypt({ciphertext: core.enc.Hex.parse(encrypted)}, core.enc.Hex.parse(key), {
     iv: core.enc.Hex.parse(iv),
     padding,
-    mode: ws ? CTR : IGE
+    mode: IGE
   })
 
   return ws ? bytesFromHex(decryptedWords.toString(core.format.Hex)) : bytesFromWords(decryptedWords)
@@ -120,6 +120,8 @@ const decrypt = (encryptedBytes, keyBytes, ivBytes, ws) => {
 
 const encrypt = (bytes, keyBytes, ivBytes, ws) => {
   bytes = bytes.byteLength ? [...new Uint8Array(bytes)] : bytes
+  keyBytes = keyBytes.byteLength ? [...new Uint8Array(bytes)] : keyBytes
+  ivBytes = ivBytes.byteLength ? [...new Uint8Array(bytes)] : ivBytes
   bytes = addPadding(bytes)
   const hex = bytesToHex(bytes)
   const key = bytesToHex(keyBytes)
@@ -127,7 +129,7 @@ const encrypt = (bytes, keyBytes, ivBytes, ws) => {
   const encryptedWords = AES.encrypt(core.enc.Hex.parse(hex), core.enc.Hex.parse(key), {
     iv: core.enc.Hex.parse(iv),
     padding,
-    mode: ws ? CTR : IGE,
+    mode: IGE
   })
   return bytesFromWords(encryptedWords)
 }

@@ -19,43 +19,34 @@ const parseRawData = data => {
 }
 
 const prepareRequest = (request, authKeyID) => {
-  const requestBuffer = request.bytesLength ? request : new Uint8Array(request).buffer
-  const requestLength = requestBuffer.byteLength || requestBuffer.length
-  const requestArray = new Int32Array(requestBuffer)
+  const requestBytes = request.length ? request : [...new Uint8Array(request)]
+  const requestLength = requestBytes.length
 
   const emptyAuthKey = [0, 0, 0, 0, 0, 0, 0, 0]
-
   const id = getMessageID()
 
   const header = new Serialization()
   header.store([
     Serialization.bytes(authKeyID || emptyAuthKey),
     Serialization.int(id),
-    Serialization.padding(Serialization.int(requestLength).reverse())
+    Serialization.padding(Serialization.int(requestLength).reverse()),
+    Serialization.bytes(requestBytes)
   ])
 
-  console.log(header.getBytes(), Serialization.int(id))
+  console.log(request, requestBytes, header.getBytes() )
 
-  const headerBuffer = header.getBuffer()
-  const headerArray = new Int32Array(headerBuffer)
-  const headerLength = headerBuffer.byteLength
-
-  const resultBuffer = new ArrayBuffer(headerLength + requestLength)
-  const resultArray = new Int32Array(resultBuffer)
-  resultArray.set(headerArray)
-  resultArray.set(requestArray, headerArray.length)
-  return [ resultArray, resultBuffer ]
+  return [ header.getBuffer(), header.getBytes() ]
 }
 
 const sendRequest = (requestBuffer, prepared) => {
   
-  const [ resultArray, resultBuffer ] = prepareRequest(requestBuffer)
+  const resultBuffer = prepared ? requestBuffer : prepareRequest(requestBuffer)[0]
 
   console.log('[MT] Sending request with length:', resultBuffer.byteLength, resultBuffer)
 
   return fetch('http://149.154.167.40/apiw1_test', {
     method: 'POST',
-    body: prepared ? requestBuffer : resultArray
+    body: resultBuffer
   })
   .then(data => data.arrayBuffer())
   .then(data => {

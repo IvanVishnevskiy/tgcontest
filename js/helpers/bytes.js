@@ -76,6 +76,7 @@ const sha1Hash = b => {
 // }
 
 function sha256Hash (bytes) {
+  bytes = bytes.byteLength ? [...new Uint8Array(bytes)] : bytes
   // console.log(dT(), 'SHA-2 hash start', bytes.byteLength || bytes.length)
   var hashWords = SHA256(bytesToWords(bytes))
   // console.log(dT(), 'SHA-2 hash finish')
@@ -122,6 +123,7 @@ const bytesFromBigInt = (int, length) => {
 
 const bytesToWords = bytes => {
   if(bytes instanceof ArrayBuffer) bytes = new Uint8Array(bytes)
+  if(!bytes.byteLength) bytes = new Uint8Array(bytes)
   const length = bytes.length
   const words = []
   for(let i = 0; i < length; i++) words[i >>> 2] |= bytes[i] << (24 - (i % 4) * 8 )

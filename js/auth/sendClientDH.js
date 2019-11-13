@@ -64,7 +64,6 @@ const sendClientDH = params => new Promise((resolve, reject) => {
     const authKeyHash = sha1Bytes(authKey)
     const authKeyAux = authKeyHash.slice(0, 8)
     const authKeyID = authKeyHash.slice(-8)
-    console.log(authKeyHash, authKeyAux, authKeyID)
     const { _ } = response
 
     switch(_) {
