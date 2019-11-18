@@ -27,10 +27,12 @@ import sendClientDH from './auth/sendClientDH'
 
 import Session from './auth/session'
 
-import { Serialization } from './helpers/TL'
+import { Serialization, Deserialization } from './mtproto/TL'
 
 const { js: loginJS, html: loginHTML } = login
 
+import mtproto from './mtproto/mtproto'
+import TL from './mtproto/TL'
 
 window.bigInt = bigInt
 
@@ -62,16 +64,14 @@ const sendReqPQ = () => {
   Auth.set({ nonce })
 
   const reqPQ = new Serialization()
-  reqPQ.store([
-    Serialization.name('60469778'),
-    Serialization.bytes(nonce)
-  ])
+  const resName = reqPQ.serialize('req_pq', { nonce })
 
-  sendRequest(reqPQ.getBuffer())
+  sendRequest(reqPQ.getBuffer(), true )
     .then(([error, data]) => {
       if(error) throw new Error(error)
-      const res = data.fetchObject('ResPQ')
-      window.res = res
+      window.res = data
+      const resPQ = new Deserialization(resName, data)
+      return
       const { _, server_nonce, pq, server_public_key_fingerprints } = res
       if (_ !== 'resPQ') 
         throw new Error('[MT] resPQ response invalid: ' + _)
@@ -96,87 +96,80 @@ const sendReqPQ = () => {
       console.log(performance.now(), 'factorization start')
       return CryptoWorker.factorize(hexPQ)
     })
-    .then(([p ,q]) => {
-      console.log(performance.now(), 'factorization end')
-      if(!p || !q) {
-        console.error(p, q, Auth.get('pq'))
-        throw new Error('[FACTORIZATION] Error factorization. PQ')
-      }
-      const random = highEntropyRandom(32)
-      p = bytesFromHex(p.value.toString(16))
-      q = bytesFromHex(q.value.toString(16))
+    // .then(([p ,q]) => {
+    //   console.log(performance.now(), 'factorization end')
+    //   if(!p || !q) {
+    //     console.error(p, q, Auth.get('pq'))
+    //     throw new Error('[FACTORIZATION] Error factorization. PQ')
+    //   }
+    //   const random = highEntropyRandom(32)
+    //   p = bytesFromHex(p.value.toString(16))
+    //   q = bytesFromHex(q.value.toString(16))
 
 
-      Auth.set({ new_nonce: random })
+    //   Auth.set({ new_nonce: random })
 
-      const { nonce, server_nonce, new_nonce, pq, publicKey } = Auth.get()
-      const pq1 = transformNumber(pq)
-      const q1 = transformNumber(q)
-      const p1 = transformNumber(p)
+    //   const { nonce, server_nonce, new_nonce, pq, publicKey } = Auth.get()
+    //   const pq1 = transformNumber(pq)
+    //   const q1 = transformNumber(q)
+    //   const p1 = transformNumber(p)
 
-      const data = new Serialization()
-      data.store([
-        Serialization.name('83c95aec'),
-        Serialization.bytes(pq1),
-        Serialization.bytes(p1),
-        Serialization.bytes(q1),
-        Serialization.bytes(nonce),
-        Serialization.bytes(server_nonce),
-        Serialization.bytes(new_nonce),
-      ])
+    //   const data = new Serialization()
+    //   data.store([
+    //     Serialization.name('83c95aec'),
+    //     Serialization.bytes(pq1),
+    //     Serialization.bytes(p1),
+    //     Serialization.bytes(q1),
+    //     Serialization.bytes(nonce),
+    //     Serialization.bytes(server_nonce),
+    //     Serialization.bytes(new_nonce),
+    //   ])
 
-      const dataWithHash = sha1Bytes(data.getBuffer()).concat(data.getBytes())
+    //   const dataWithHash = sha1Bytes(data.getBuffer()).concat(data.getBytes())
 
-      const req = new Serialization()
-      req.store([
-        Serialization.name('d712e4be'),
-        Serialization.bytes(nonce),
-        Serialization.bytes(server_nonce),
-        Serialization.bytes(p1),
-        Serialization.bytes(q1),
-        Serialization.bigInt(publicKey.fingerprint),
-        Serialization.byteString(rsaEncrypt(publicKey, dataWithHash))
-      ])
+    //   const req = new Serialization()
+    //   req.store([
+    //     Serialization.name('d712e4be'),
+    //     Serialization.bytes(nonce),
+    //     Serialization.bytes(server_nonce),
+    //     Serialization.bytes(p1),
+    //     Serialization.bytes(q1),
+    //     Serialization.bigInt(publicKey.fingerprint),
+    //     Serialization.byteString(rsaEncrypt(publicKey, dataWithHash))
+    //   ])
 
-      return sendRequest(req.getBuffer())
-    })
-    .then(([error, data, rawData]) => {
-      if(error) throw new Error('Can\'t get DH!')
-      return Promise.resolve(DH_params(rawData.data))
-    })
-    .then(dhData => {
-      return sendClientDH(dhData)
-    })
-    .then(done => {
-      console.log(performance.now(), '[MT] Got server salt')
-      const { serverSalt, authKey, authKeyID } = Auth.get()
-      const wsSession = new Session({ serverSalt, authKey, authKeyID, dcID: 2 })
-      setTimeout(() => {
-        // wsSession.wrapAPI('auth.sendCode', {
-        //   flags: 0,
-        //   phone_number: 79998303931,
-        //   api_id: Config.api_id,
-        //   api_hash: Config.api_hash,
-        //   lang_code: navigator.language || 'en'
-        // })
-        // wsSession.wrapAPI('help.getNearestDc')
-        // wsSession.wrapAPI('help.getNearestDc')
-      }, 1000)
-      localStorage.setItem('auth', JSON.stringify(Auth.get()))
-    })
+    //   return sendRequest(req.getBuffer())
+    // })
+    // .then(([error, data, rawData]) => {
+
+    //   if(error) throw new Error('Can\'t get DH!')
+    //   return Promise.resolve(DH_params(rawData.data))
+    // })
+    // .then(dhData => {
+
+    //   return sendClientDH(dhData)
+    // })
+    // .then(done => {
+
+    //   console.log(performance.now(), '[MT] Got server salt')
+    //   const { serverSalt, authKey, authKeyID } = Auth.get()
+    //   const wsSession = new Session({ serverSalt, authKey, authKeyID, dcID: 2 })
+    //   setTimeout(() => {
+    //     // wsSession.wrapAPI('auth.sendCode', {
+    //     //   flags: 0,
+    //     //   phone_number: 79998303931,
+    //     //   api_id: Config.api_id,
+    //     //   api_hash: Config.api_hash,
+    //     //   lang_code: navigator.language || 'en'
+    //     // })
+    //     // wsSession.wrapAPI('help.getNearestDc')
+    //     // wsSession.wrapAPI('help.getNearestDc')
+    //   }, 1000)
+    //   localStorage.setItem('auth', JSON.stringify(Auth.get()))
+    // })
 }
 
 sendReqPQ()
-
-// const wsSession = new Session()
-
-// wsSession.wrapAPI('auth.sendCode', {
-//   flags: 0,
-//   phone_number: '+79998303931',
-//   api_id: Config.api_id,
-//   api_hash: Config.api_hash,
-//   lang_code: navigator.language || 'en'
-// })
 
 export { $G, $GS }
 

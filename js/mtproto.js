@@ -41,7 +41,7 @@ const prepareRequest = (request, authKeyID) => {
 const sendRequest = (requestBuffer, prepared) => {
   
   const resultBuffer = prepared ? requestBuffer : prepareRequest(requestBuffer)[0]
-
+  console.log(prepareRequest(requestBuffer)[0], requestBuffer)
   console.log('[MT] Sending request with length:', resultBuffer.byteLength, resultBuffer)
 
   return fetch('http://149.154.167.40/apiw1_test', {
@@ -54,7 +54,8 @@ const sendRequest = (requestBuffer, prepared) => {
       parsedData.fetchLong('auth_key_id')
       parsedData.fetchLong('msg_id')
       parsedData.fetchInt('msg_len')
-      return [null, parsedData, parseRawData(data)]
+      // return [null, parsedData, parseRawData(data)]
+      return [null, data]
     })
   .catch(error => {
     return [error]
