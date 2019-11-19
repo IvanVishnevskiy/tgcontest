@@ -25,6 +25,15 @@ class Bytes {
     for(let i = start; i < length; i += 2) bytes.push(parseInt(hex.substr(i, 2), 16))
     return bytes
   }
+  static toHex = (bytes = []) => {
+    bytes = bytes.reverse()
+    for (var arr = [], i = 0; i < bytes.length; i++) arr.push((bytes[i] < 16 ? '0' : '') + (bytes[i] || 0).toString(16))
+    return arr.join('')
+  }
+  static toInt = (bytes = []) => {
+    for(var res = 0, i = 0; i < bytes.length; i++) res += (bytes[i] << (i * 8))
+    return res
+  }
 }
 
 export default Bytes
