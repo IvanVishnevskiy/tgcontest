@@ -31,7 +31,7 @@ class Bytes {
     return arr.join('')
   }
   static toInt = (bytes = []) => {
-    for(var res = 0, i = 0; i < bytes.length; i++) res += (bytes[i] << (i * 8))
+    for(var b = bytes.reverse(), res = 0, i = 0; i < b.length; i++) res += (b[i] << (i * 8))
     return res
   }
 }
