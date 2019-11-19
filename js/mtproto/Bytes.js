@@ -26,9 +26,8 @@ class Bytes {
     return bytes
   }
   static toHex = (bytes = []) => {
-    bytes = bytes.reverse()
-    for (var arr = [], i = 0; i < bytes.length; i++) arr.push((bytes[i] < 16 ? '0' : '') + (bytes[i] || 0).toString(16))
-    return arr.join('')
+    for (var b = bytes.reverse(), res = [], i = 0; i < b.length; i++) res.push((b[i] < 16 ? '0' : '') + (b[i] || 0).toString(16))
+    return res.join('')
   }
   static toInt = (bytes = []) => {
     for(var b = bytes.reverse(), res = 0, i = 0; i < b.length; i++) res += (b[i] << (i * 8))
