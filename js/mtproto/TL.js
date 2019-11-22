@@ -1,5 +1,5 @@
 import Bytes from './Bytes'
-import { schema } from './mtproto'
+import { schema, names } from './mtproto'
 import getMessageID from '../helpers/getMessageID'
 
 import bigInt from 'big-integer'
@@ -14,7 +14,8 @@ class TypesIn {
 }
 
 class TypesOut {
-  static int = (data = [], length = 128) => {
+  static int = (data = [], type) => {
+    let { length = 128 } = type
     length = length / 8
     let item = new Array(length)
     for(let i = 0; i < length; i++) item[i] = data[i]
@@ -24,7 +25,43 @@ class TypesOut {
   }
   static bytes = (data = []) => ({ res: [], item: data })
   static string = (data = []) => {
-    console.log(data)
+    if(data.length === 0) return []
+    let offset = 0
+    let length = data[0]
+    if(length > 254) {
+      length = Bytes.toInt(data.slice(0, 4))
+      offset += 4
+    }
+    else offset++
+    offset += length
+    while(offset % 4) offset++
+    
+    const str = Bytes.toHex(data.slice(0, length))
+    return { item: str, res: data.slice(offset)}
+  }
+  static vector = (data = [], type) => {
+    if(!data || !data.length) return console.error('No data to parse long from.')
+    const { vectorType } = type
+    if(!type) return console.error('No type for vector.')
+    const name = Bytes.toHex(data.slice(0, 4))
+    const count = Bytes.toInt(data.slice(4, 8).reverse())
+    const items = []
+    data = data.slice(8)
+    for(let i = 0; i < count; i++) {
+      const { item, res } = TypesOut[vectorType](data)
+      data = res
+      items.push(item)
+    }
+    return { item: items, res: data }
+  }
+  static long = data => {
+    if(!data || !data.length) return console.error('No data to parse long from.')
+    const item = Bytes.toHex(data.slice(0, 8))
+    return { item, res: data.slice(8)}
+  }
+  static name = data => {
+    if(!data || !data.length) return console.error('No data to parse long from.')
+    return { item: Bytes.toHex(data.slice(0, 4)), res: data.slice(4) }
   }
 }
 
@@ -82,12 +119,15 @@ class Deserialization {
     if(!rec && !skeleton) throw new Error('No skeleton found');
     (rec ? object.params : skeleton.params).forEach(field => {
       const { name, type } = field
-      const { res, item } = TypesOut[type.fieldType](data || [], type.length)
+      console.log(rec ? object.params : skeleton.params)
+      const { res, item } = TypesOut[type.fieldType](data || [], type)
       data = res
       this.fields[name] = item
     })
     console.log(this.fields)
-    this.deserialize(name, this.fields.message_data, true)
+    this.name = names[this.fields.name]
+    console.log(this.name)
+    if(!rec) this.deserialize(name, this.fields.message_data, true)
   }
 }
 
