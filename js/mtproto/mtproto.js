@@ -16,11 +16,11 @@ const getSchema = () => {
   .reduce((res, next) => {
     const [ input, output ] = next.trim().split(' = ')
     const hasFlags = input.includes('flags')
-    const [ nameAndId, ...params ] = input.split(' ')
+    const [ nameAndId, ...params ] = input.replace('Vector ', 'Vector_').split(' ')
     const [ name, id ] = nameAndId.split('#')
     const paramsParsed = params.map(param => {
       param = param.replace(/[{}]/).split(':')
-      if(!param.length || param.length === 1) return { name: '', type: '' }
+      if(!param.length || param.length === 1) return
       let [ name, type ] = param
       if(type.includes('flags')) {
         const [ , flag, fieldType ] = type.split(/[.?]/)
@@ -29,9 +29,10 @@ const getSchema = () => {
       else if (type.includes('int')) {
         type = { fieldType: 'int', length: type.substr(3) }
       }
+      else if (type.includes('Vector')) type = { fieldType: 'vector', vectorType: type.split('_')[1]  }
       else type = { fieldType: type }
       return { name, type }
-    })
+    }).filter(item => item)
     res.schema[name.toLowerCase()] = {
       id,
       params: paramsParsed,
@@ -51,5 +52,6 @@ const getSchema = () => {
 getSchema() 
 
 window.schema = retrievedSchema
+window.names = retrievedNames
 
 export { retrievedSchema as schema, retrievedNames as names }
