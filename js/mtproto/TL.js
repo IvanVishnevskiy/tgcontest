@@ -27,16 +27,20 @@ class TypesOut {
   static string = (data = []) => {
     if(data.length === 0) return []
     let offset = 0
+    let start = 0
     let length = data[0]
     if(length > 254) {
       length = Bytes.toInt(data.slice(0, 4))
       offset += 4
+      start = 4
     }
-    else offset++
+    else {
+      offset++
+      start++
+    }
     offset += length
     while(offset % 4) offset++
-    
-    const str = Bytes.toHex(data.slice(0, length))
+    const str = Bytes.toHex(data.slice(start, length + start).reverse())
     return { item: str, res: data.slice(offset)}
   }
   static vector = (data = [], type) => {
@@ -97,7 +101,7 @@ class Serialization {
     )
     return res
   }
-
+  getRawBytes = () => this.bytes
   getBuffer = () => new Uint8Array(this.getBytes()).buffer
 }
 
@@ -108,7 +112,6 @@ class Deserialization {
   
   fields = {}
   deserialize = (name = '', data = [], rec) => {
-    console.log(data)
     if(!name) throw new Error('No name')
     data = data.byteLength ? [...new Uint8Array(data)] : data
     if(!data || !data.length) throw new Error('Nothing to deserialize')
@@ -119,14 +122,11 @@ class Deserialization {
     if(!rec && !skeleton) throw new Error('No skeleton found');
     (rec ? object.params : skeleton.params).forEach(field => {
       const { name, type } = field
-      console.log(rec ? object.params : skeleton.params)
       const { res, item } = TypesOut[type.fieldType](data || [], type)
       data = res
       this.fields[name] = item
     })
-    console.log(this.fields)
     this.name = names[this.fields.name]
-    console.log(this.name)
     if(!rec) this.deserialize(name, this.fields.message_data, true)
   }
 }
