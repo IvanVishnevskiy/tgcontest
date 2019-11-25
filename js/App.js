@@ -33,6 +33,7 @@ const { js: loginJS, html: loginHTML } = login
 
 import mtproto from './mtproto/mtproto'
 import TL from './mtproto/TL'
+import Bytes from './mtproto/Bytes'
 
 window.bigInt = bigInt
 
@@ -57,7 +58,7 @@ const writeBuffer = (shift, lendata, resultbuf, data) => {
 }	
 
 const sendReqPQ = () => {
-  const nonce = []
+  let nonce = []
   for (let i = 0; i < 16; i++) {
     nonce.push(nextRandomInt(0xFF))
   }
@@ -69,15 +70,15 @@ const sendReqPQ = () => {
   sendRequest(reqPQ.getBuffer(), true )
     .then(([error, data]) => {
       if(error) throw new Error(error)
-      window.res = data
-      const resPQ = new Deserialization(resName, data)
-      return
-      const { _, server_nonce, pq, server_public_key_fingerprints } = res
-      if (_ !== 'resPQ') 
-        throw new Error('[MT] resPQ response invalid: ' + _)
       
-      if (!compareBytes(nonce, res.nonce)) 
-        throw new Error('[MT] resPQ nonce mismatch')
+      const resPQ = new Deserialization(resName, data)
+      window.res = resPQ
+      const { name, fields } = resPQ
+      if(name !== 'respq') throw new Error('[MT] resPQ response invalid: ' + _)
+      const { server_nonce, pq, server_public_key_fingerprints } = fields
+      
+      if(Bytes.toHex(nonce) !== fields.nonce) throw new Error('[MT] resPQ nonce mismatch')
+        
       Auth.set({ 
         server_nonce: server_nonce, 
         pq, 
@@ -91,55 +92,49 @@ const sendReqPQ = () => {
         throw new Error('[MT] No public key found')
       }
       else console.log('Got MT public key')
-      const hexPQ = bytesToHex(pq)
-
       console.log(performance.now(), 'factorization start')
-      return CryptoWorker.factorize(hexPQ)
+      return CryptoWorker.factorize(pq)
     })
-    // .then(([p ,q]) => {
-    //   console.log(performance.now(), 'factorization end')
-    //   if(!p || !q) {
-    //     console.error(p, q, Auth.get('pq'))
-    //     throw new Error('[FACTORIZATION] Error factorization. PQ')
-    //   }
-    //   const random = highEntropyRandom(32)
-    //   p = bytesFromHex(p.value.toString(16))
-    //   q = bytesFromHex(q.value.toString(16))
+    .then(([p ,q]) => {
+      console.log(performance.now(), 'factorization end')
+      if(!p || !q) {
+        console.error(p, q, Auth.get('pq'))
+        throw new Error('[FACTORIZATION] Error factorization. PQ')
+      }
+      const random = highEntropyRandom(32)
 
+      Auth.set({ new_nonce: random })
 
-    //   Auth.set({ new_nonce: random })
+      const { nonce, server_nonce, new_nonce, pq, publicKey } = Auth.get()
 
-    //   const { nonce, server_nonce, new_nonce, pq, publicKey } = Auth.get()
-    //   const pq1 = transformNumber(pq)
-    //   const q1 = transformNumber(q)
-    //   const p1 = transformNumber(p)
+      const innerData = new Serialization()
 
-    //   const data = new Serialization()
-    //   data.store([
-    //     Serialization.name('83c95aec'),
-    //     Serialization.bytes(pq1),
-    //     Serialization.bytes(p1),
-    //     Serialization.bytes(q1),
-    //     Serialization.bytes(nonce),
-    //     Serialization.bytes(server_nonce),
-    //     Serialization.bytes(new_nonce),
-    //   ])
+      // const data = new Serialization()
+      // data.store([
+      //   Serialization.name('83c95aec'),
+      //   Serialization.bytes(pq),
+      //   Serialization.bytes(p),
+      //   Serialization.bytes(q),
+      //   Serialization.bytes(nonce),
+      //   Serialization.bytes(server_nonce),
+      //   Serialization.bytes(new_nonce),
+      // ])
 
-    //   const dataWithHash = sha1Bytes(data.getBuffer()).concat(data.getBytes())
+      // const dataWithHash = sha1Bytes(data.getBuffer()).concat(data.getBytes())
 
-    //   const req = new Serialization()
-    //   req.store([
-    //     Serialization.name('d712e4be'),
-    //     Serialization.bytes(nonce),
-    //     Serialization.bytes(server_nonce),
-    //     Serialization.bytes(p1),
-    //     Serialization.bytes(q1),
-    //     Serialization.bigInt(publicKey.fingerprint),
-    //     Serialization.byteString(rsaEncrypt(publicKey, dataWithHash))
-    //   ])
+      // const req = new Serialization()
+      // req.store([
+      //   Serialization.name('d712e4be'),
+      //   Serialization.bytes(nonce),
+      //   Serialization.bytes(server_nonce),
+      //   Serialization.bytes(p1),
+      //   Serialization.bytes(q1),
+      //   Serialization.bigInt(publicKey.fingerprint),
+      //   Serialization.byteString(rsaEncrypt(publicKey, dataWithHash))
+      // ])
 
-    //   return sendRequest(req.getBuffer())
-    // })
+      // return sendRequest(req.getBuffer())
+    })
     // .then(([error, data, rawData]) => {
 
     //   if(error) throw new Error('Can\'t get DH!')
