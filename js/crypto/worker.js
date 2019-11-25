@@ -1,4 +1,3 @@
-import bigInt from 'big-integer'
 import { bytesToHex } from '../helpers/bytes'
 const CryptoWorker = new Worker('/CryptoWorker.js')
 

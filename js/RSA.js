@@ -52,14 +52,12 @@ const keys = [
 }, {})
 
 const selectKeyByFingerprint = fingerprints => {
-  let hexFingerprint = ''
   let res
   fingerprints.forEach((f, i) => {
     if(res) return
-    hexFingerprint += bigInt(f).toString(16)
-    if(keys[hexFingerprint]) res = {
+    if(keys[f]) res = {
       fingerprint: fingerprints[i],
-      ...keys[hexFingerprint]
+      ...keys[f]
     }
   })
   return res || false
