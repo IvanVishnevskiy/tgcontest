@@ -7,9 +7,23 @@ import bigInt from 'big-integer'
 class TypesIn {
   static int = (data = 0, length = 128) => {
     data = data.map ? data : 
-    typeof data === 'string' ? Bytes.fromHex(bigInt(data).toString(16)) : 
+    typeof data === 'string' ? Bytes.fromHex(data) : 
     Bytes.fromInt(data, length / 8)
     return data.length === length / 8 ? data : Bytes.addPadding(data.reverse(), length / 8)
+  }
+  static string = (data = '') => {
+    const str = typeof data === 'string' ? Bytes.fromHex(data) : data
+    const lengthArr = []
+    const length = str.length
+    if(length > 254) {
+      lengthArr.push(length & 0xff)
+      lengthArr.push((length & 0xff00) >> 8)
+      lengthArr.push((length & 0xff0000) >> 16)
+    }
+    else lengthArr.push(str.length)
+    const res = [...lengthArr, ...str]
+    while(res.length % 4) res.push(0)
+    return res
   }
 }
 
@@ -95,7 +109,7 @@ class Serialization {
     const id = getMessageID()
     const res = [].concat(
       authKey,
-      TypesIn.int(id, 64),
+      TypesIn.int(bigInt(id).toString(16), 64),
       TypesIn.int(bytes.length, 32).reverse(),
       bytes
     )
