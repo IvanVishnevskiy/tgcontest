@@ -12,7 +12,7 @@ import login from '../pages/login/export'
 import { sendRequest } from './mtproto'
 import nextRandomInt from './helpers/nextRandomInt'
 import { compareBytes, bytesToHex, sha1Bytes, bytesFromHex } from './helpers/bytes'
-import { selectKeyByFingerprint, rsaEncrypt } from './RSA'
+import { selectKeyByFingerprint } from './RSA'
 
 import Auth from './Auth'
 import bigInt from 'big-integer'
@@ -20,8 +20,6 @@ import bigInt from 'big-integer'
 import highEntropyRandom from './helpers/highEntropyRandom'
 
 import DH_params from './deserializers/DH_params'
-
-import { transformString, transformNumber } from './typeTransformations'
 
 import sendClientDH from './auth/sendClientDH'
 
@@ -46,16 +44,6 @@ const showPage = page => {
 }
 
 showPage()
-
-const buffer = new Uint8Array(40)
-
-const writeBuffer = (shift, lendata, resultbuf, data) => {
-  for(i=0; i<lendata; i++){
-   var index = data.length - 1 - Math.floor(i/4);
-   resultbuf[i+shift] = data[index];
-   data[index] = data[index] >>> 8;
- }	
-}	
 
 const sendReqPQ = () => {
   let nonce = []
@@ -107,7 +95,14 @@ const sendReqPQ = () => {
 
       const { nonce, server_nonce, new_nonce, pq, publicKey } = Auth.get()
 
-      const innerData = new Serialization()
+      const innerData = new Serialization('p_q_inner_data', {
+        pq,
+        p: p.value.toString(16),
+        q: q.value.toString(16),
+        nonce,
+        server_nonce,
+        new_nonce
+      })
 
       // const data = new Serialization()
       // data.store([
